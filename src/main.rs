@@ -1,10 +1,11 @@
-//! Cognition PP — local-first presentation backend.
-//! Serves the static UI and opens xlsx / csv / parquet from the user's Documents folder.
+//! XSlide — local-first presentation backend.
+//! Serves the static UI and opens presentations and media from Documents.
 
 mod documents;
 mod export;
 mod files;
 
+use std::io::Write;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -15,14 +16,14 @@ use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use documents::{Document, DocumentMeta, DocumentStore, SaveDocument};
 use files::{
-    list_documents_folder, open_bytes, open_file, read_raw_file, resolve_documents_dir, OpenPathBody,
+    list_documents_folder, open_bytes, open_file, read_raw_file, resolve_documents_dir,
+    OpenPathBody,
 };
 
 #[derive(Clone)]
@@ -61,10 +62,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/documents", get(list_documents).post(create_document))
         .route(
             "/documents/{id}",
-            get(get_document).put(update_document).delete(delete_document),
+            get(get_document)
+                .put(update_document)
+                .delete(delete_document),
         )
         .route("/files", get(list_files))
         .route("/files/open", post(open_path))
+        .route("/files/launch", get(open_launch_file))
         .route("/files/import", post(import_upload))
         .route("/files/raw", get(serve_raw_file))
         .route("/files/docs-dir", get(docs_dir_info))
@@ -73,12 +77,6 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .nest("/api", api)
         .fallback_service(spa)
-        .layer(
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(Any),
-        )
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -87,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
         .and_then(|p| p.parse().ok())
         .unwrap_or(8789);
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    tracing::info!("Cognition PP listening on http://{addr}");
+    tracing::info!("XSlide listening on http://{addr}");
     tracing::info!("Local-only mode — no cloud endpoints");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -96,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn resolve_data_dir() -> PathBuf {
-    if let Ok(p) = std::env::var("COGNITION_DATA_DIR") {
+    if let Ok(p) = std::env::var("XSLIDE_DATA_DIR") {
         return PathBuf::from(p);
     }
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -104,7 +102,7 @@ fn resolve_data_dir() -> PathBuf {
 }
 
 fn resolve_static_dir() -> PathBuf {
-    if let Ok(p) = std::env::var("COGNITION_STATIC_DIR") {
+    if let Ok(p) = std::env::var("XSLIDE_STATIC_DIR") {
         return PathBuf::from(p);
     }
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -123,7 +121,7 @@ fn resolve_static_dir() -> PathBuf {
 async fn health(State(state): State<AppState>) -> impl IntoResponse {
     Json(serde_json::json!({
         "ok": true,
-        "app": "Cognition PP",
+        "app": "XSlide",
         "mode": "local",
         "cloud": false,
         "documents_dir": state.docs_dir.display().to_string(),
@@ -137,7 +135,9 @@ async fn docs_dir_info(State(state): State<AppState>) -> impl IntoResponse {
     }))
 }
 
-async fn list_files(State(state): State<AppState>) -> Result<Json<Vec<files::FileEntry>>, ApiError> {
+async fn list_files(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<files::FileEntry>>, ApiError> {
     let list = list_documents_folder(&state.docs_dir).map_err(ApiError::from)?;
     Ok(Json(list))
 }
@@ -148,6 +148,44 @@ async fn open_path(
 ) -> Result<Json<files::OpenedFile>, ApiError> {
     let opened = open_file(&state.docs_dir, &body.path).map_err(ApiError::from)?;
     Ok(Json(opened))
+}
+
+#[derive(serde::Deserialize)]
+struct LaunchQuery {
+    token: String,
+}
+
+async fn open_launch_file(
+    Query(query): Query<LaunchQuery>,
+) -> Result<Json<files::OpenedFile>, ApiError> {
+    let token =
+        std::env::var("XSLIDE_LAUNCH_TOKEN").map_err(|_| ApiError::bad("No launch file".into()))?;
+    if query.token != token {
+        return Err(ApiError::bad("Invalid launch token".into()));
+    }
+    let path = PathBuf::from(
+        std::env::var("XSLIDE_LAUNCH_FILE").map_err(|_| ApiError::bad("No launch file".into()))?,
+    );
+    let metadata = std::fs::metadata(&path).map_err(|e| ApiError::bad(e.to_string()))?;
+    if !metadata.is_file() || metadata.len() > 50 * 1024 * 1024 {
+        return Err(ApiError::bad(
+            "Launch file must be a file under 50 MB".into(),
+        ));
+    }
+    let name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| ApiError::bad("Invalid file name".into()))?;
+    let ext = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let title = path.file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+    let bytes = std::fs::read(&path).map_err(|e| ApiError::bad(e.to_string()))?;
+    Ok(Json(
+        open_bytes(name, "", &ext, title, &bytes).map_err(ApiError::from)?,
+    ))
 }
 
 async fn serve_raw_file(
@@ -194,12 +232,13 @@ async fn import_upload(
             .unwrap_or_else(|| "Untitled presentation".into());
 
         // Persist media into Documents so the client can stream via /api/files/raw.
-        if matches!(ext.as_str(), "pdf" | "png" | "pptx" | "jpg" | "jpeg" | "webp" | "gif" | "svg")
-        {
-            let safe_name = sanitize_import_name(&name);
-            let dest = state.docs_dir.join(&safe_name);
-            std::fs::write(&dest, &data).map_err(|e| ApiError::bad(e.to_string()))?;
-            let rel = safe_name.replace('\\', "/");
+        if matches!(
+            ext.as_str(),
+            "pdf" | "png" | "pptx" | "jpg" | "jpeg" | "webp" | "gif" | "svg"
+        ) {
+            // Reject damaged files before creating a permanent library copy.
+            open_bytes(&name, &name, &ext, &title, &data).map_err(ApiError::from)?;
+            let rel = persist_import(&state.docs_dir, &sanitize_import_name(&name), &data)?;
             let opened = open_file(&state.docs_dir, &rel).map_err(ApiError::from)?;
             return Ok(Json(opened));
         }
@@ -230,6 +269,33 @@ fn sanitize_import_name(name: &str) -> String {
     }
 }
 
+fn persist_import(root: &std::path::Path, name: &str, data: &[u8]) -> Result<String, ApiError> {
+    let (stem, ext) = name.rsplit_once('.').unwrap_or((name, ""));
+    for attempt in 0..10_000 {
+        let candidate = if attempt == 0 {
+            name.to_string()
+        } else if ext.is_empty() {
+            format!("{stem} ({attempt})")
+        } else {
+            format!("{stem} ({attempt}).{ext}")
+        };
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(root.join(&candidate))
+        {
+            Ok(mut file) => {
+                file.write_all(data)
+                    .map_err(|e| ApiError::bad(e.to_string()))?;
+                return Ok(candidate);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(ApiError::bad(e.to_string())),
+        }
+    }
+    Err(ApiError::bad("too many files with this name".into()))
+}
+
 async fn export_document(Json(body): Json<export::ExportBody>) -> Result<Response, ApiError> {
     let file = export::export_document(&body).map_err(ApiError::from)?;
     let mut res = Response::new(Body::from(file.bytes));
@@ -240,7 +306,10 @@ async fn export_document(Json(body): Json<export::ExportBody>) -> Result<Respons
             .parse()
             .unwrap_or_else(|_| "application/octet-stream".parse().unwrap()),
     );
-    let disp = format!("attachment; filename=\"{}\"", file.filename.replace('"', ""));
+    let disp = format!(
+        "attachment; filename=\"{}\"",
+        file.filename.replace('"', "")
+    );
     res.headers_mut().insert(
         header::CONTENT_DISPOSITION,
         disp.parse()
@@ -249,7 +318,9 @@ async fn export_document(Json(body): Json<export::ExportBody>) -> Result<Respons
     Ok(res)
 }
 
-async fn list_documents(State(state): State<AppState>) -> Result<Json<Vec<DocumentMeta>>, ApiError> {
+async fn list_documents(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<DocumentMeta>>, ApiError> {
     let list = state.store.list().map_err(ApiError::from)?;
     Ok(Json(list))
 }
@@ -287,6 +358,7 @@ async fn delete_document(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Debug)]
 struct ApiError {
     status: StatusCode,
     message: String,
@@ -370,5 +442,23 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let body = Json(serde_json::json!({ "error": self.message }));
         (self.status, body).into_response()
+    }
+}
+
+#[cfg(test)]
+mod import_tests {
+    use super::*;
+
+    #[test]
+    fn repeated_import_does_not_overwrite_existing_file() {
+        let dir = std::env::temp_dir().join(format!("xslide-import-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let first = persist_import(&dir, "report.pdf", b"first").unwrap();
+        let second = persist_import(&dir, "report.pdf", b"second").unwrap();
+        assert_eq!(first, "report.pdf");
+        assert_eq!(second, "report (1).pdf");
+        assert_eq!(std::fs::read(dir.join(first)).unwrap(), b"first");
+        assert_eq!(std::fs::read(dir.join(second)).unwrap(), b"second");
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

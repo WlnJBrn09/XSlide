@@ -1,5 +1,5 @@
-//! Cognitience PP â€” native Windows desktop host.
-//! Spawns the local Rust backend and loads the UI in WebView2 (no Electron).
+//! XSlide native desktop host.
+//! Spawns the local Rust backend and loads the UI in a system WebView.
 //!
 //! GUI builds use the Windows subsystem so double-click / Start Menu launch
 //! does **not** open a console window.
@@ -14,6 +14,7 @@ use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
+use rand::RngCore;
 use tao::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -34,7 +35,10 @@ struct BackendGuard {
 impl BackendGuard {
     fn stop(&mut self) {
         if let Some(mut child) = self.child.take() {
+            #[cfg(windows)]
             kill_process_tree(child.id());
+            #[cfg(not(windows))]
+            let _ = child.kill();
             let _ = child.wait();
         }
     }
@@ -46,6 +50,7 @@ impl Drop for BackendGuard {
     }
 }
 
+#[cfg(windows)]
 fn kill_process_tree(pid: u32) {
     let _ = Command::new("taskkill")
         .args(["/pid", &pid.to_string(), "/f", "/t"])
@@ -94,9 +99,13 @@ fn png_to_icon(path: &Path) -> Option<Icon> {
     Icon::from_rgba(rgba.into_raw(), w, h).ok()
 }
 
-fn start_backend(port: u16) -> Result<(BackendGuard, PathBuf)> {
+fn start_backend(
+    port: u16,
+    launch_file: Option<&Path>,
+    launch_token: Option<&str>,
+) -> Result<(BackendGuard, PathBuf)> {
     let exe_dir = exe_dir()?;
-    let packaged_hint = match std::env::var("COGNITION_NATIVE_PACKAGED").as_deref() {
+    let packaged_hint = match std::env::var("XSLIDE_NATIVE_PACKAGED").as_deref() {
         Ok("1") | Ok("true") => Some(true),
         Ok("0") | Ok("false") => Some(false),
         _ => None,
@@ -128,6 +137,10 @@ fn start_backend(port: u16) -> Result<(BackendGuard, PathBuf)> {
     for (k, v) in build_backend_env(port, &static_dir, &data_dir) {
         cmd.env(k, v);
     }
+    if let (Some(file), Some(token)) = (launch_file, launch_token) {
+        cmd.env("XSLIDE_LAUNCH_FILE", file);
+        cmd.env("XSLIDE_LAUNCH_TOKEN", token);
+    }
     if let Ok(v) = std::env::var("RUST_LOG") {
         cmd.env("RUST_LOG", v);
     }
@@ -155,7 +168,7 @@ fn start_backend(port: u16) -> Result<(BackendGuard, PathBuf)> {
 fn headless_mode() -> bool {
     std::env::args().any(|a| a == "--headless")
         || matches!(
-            std::env::var("COGNITION_NATIVE_HEADLESS").as_deref(),
+            std::env::var("XSLIDE_NATIVE_HEADLESS").as_deref(),
             Ok("1") | Ok("true")
         )
 }
@@ -182,10 +195,10 @@ fn attach_console_for_headless() {}
 fn run_headless(port: u16, mut backend: BackendGuard) -> Result<()> {
     attach_console_for_headless();
     println!(
-        "native-host ready product=pp port={port} ui={} headless=1",
+        "native-host ready product=xslide port={port} ui={} headless=1",
         ui_url(port)
     );
-    let secs: u64 = std::env::var("COGNITION_NATIVE_HEADLESS_SECS")
+    let secs: u64 = std::env::var("XSLIDE_NATIVE_HEADLESS_SECS")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(30);
@@ -194,7 +207,12 @@ fn run_headless(port: u16, mut backend: BackendGuard) -> Result<()> {
     Ok(())
 }
 
-fn run_gui(port: u16, mut backend: BackendGuard, app_root: &Path) -> Result<()> {
+fn run_gui(
+    port: u16,
+    mut backend: BackendGuard,
+    app_root: &Path,
+    launch_token: Option<&str>,
+) -> Result<()> {
     let event_loop = EventLoop::new();
     let mut builder = WindowBuilder::new()
         .with_title(WINDOW_TITLE)
@@ -207,11 +225,14 @@ fn run_gui(port: u16, mut backend: BackendGuard, app_root: &Path) -> Result<()> 
 
     let window = builder.build(&event_loop).context("create window")?;
 
-    let url = ui_url(port);
+    let url = match launch_token {
+        Some(token) => format!("{}?launch={token}", ui_url(port)),
+        None => ui_url(port),
+    };
     let _webview = WebViewBuilder::new()
         .with_url(&url)
         .build(&window)
-        .context("create WebView2 (install Microsoft Edge WebView2 Runtime if missing)")?;
+        .context("create system WebView")?;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -266,7 +287,7 @@ fn main() {
         let msg = format!("{e:#}");
         if headless_mode() {
             attach_console_for_headless();
-            eprintln!("Cognitience PP native host error: {msg}");
+            eprintln!("XSlide native host error: {msg}");
         } else {
             show_error_dialog(PRODUCT_NAME, &msg);
         }
@@ -276,11 +297,65 @@ fn main() {
 
 fn run() -> Result<()> {
     let _ = (PRODUCT_NAME, APP_USER_MODEL_ID, health_url(0));
-    let port = effective_port();
-    let (backend, app_root) = start_backend(port)?;
+    let launch_file = launch_arg()?;
+    let launch_token = launch_file.as_ref().map(|_| random_token());
+    let port = native_port()?;
+    let (backend, app_root) = start_backend(port, launch_file.as_deref(), launch_token.as_deref())?;
     if headless_mode() {
         run_headless(port, backend)
     } else {
-        run_gui(port, backend, &app_root)
+        run_gui(port, backend, &app_root, launch_token.as_deref())
+    }
+}
+
+fn launch_arg() -> Result<Option<PathBuf>> {
+    let mut args = std::env::args_os().skip(1);
+    let mut file = None;
+    while let Some(arg) = args.next() {
+        if arg == "--headless" {
+            continue;
+        }
+        let candidate = if arg == "--open" {
+            args.next().context("--open requires a file path")?
+        } else if arg.to_string_lossy().starts_with('-') {
+            bail!("Unknown option: {}", arg.to_string_lossy());
+        } else {
+            arg
+        };
+        if file.is_some() {
+            bail!("Open one file per window");
+        }
+        let candidate = PathBuf::from(candidate);
+        let path = std::fs::canonicalize(&candidate)
+            .with_context(|| format!("open {}", candidate.display()))?;
+        if !path.is_file() {
+            bail!("Not a file: {}", path.display());
+        }
+        file = Some(path);
+    }
+    Ok(file)
+}
+
+fn random_token() -> String {
+    let mut bytes = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn native_port() -> Result<u16> {
+    let desired = effective_port();
+    match std::net::TcpListener::bind(("127.0.0.1", desired)) {
+        Ok(listener) => {
+            drop(listener);
+            Ok(desired)
+        }
+        Err(error) if std::env::var_os("PORT").is_some() => {
+            Err(error).context("requested PORT is unavailable")
+        }
+        Err(_) => {
+            let listener = std::net::TcpListener::bind(("127.0.0.1", 0))
+                .context("reserve a free local port")?;
+            Ok(listener.local_addr()?.port())
+        }
     }
 }

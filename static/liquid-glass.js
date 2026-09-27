@@ -1,5 +1,5 @@
 /**
- * Cognition PP — monochrome liquid glass material math + DOM driver.
+ * XSlide — monochrome liquid glass material math + DOM driver.
  * Pure functions are testable without a browser DOM.
  * Grayscale only: specular + refraction, no chromatic edge.
  */
@@ -8,7 +8,7 @@
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
   }
-  root.CognitionLiquidGlass = api;
+  root.XSuiteLiquidGlass = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 

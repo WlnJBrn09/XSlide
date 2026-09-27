@@ -187,10 +187,7 @@ impl DocumentStore {
             .min(slides.len().saturating_sub(1));
         let doc = Document {
             id: id.clone(),
-            title: sanitize_title(
-                body.title
-                    .unwrap_or_else(|| "Untitled presentation".into()),
-            ),
+            title: sanitize_title(body.title.unwrap_or_else(|| "Untitled presentation".into())),
             starred: body.starred.unwrap_or(false),
             slides,
             active_slide,

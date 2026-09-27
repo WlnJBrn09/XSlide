@@ -649,11 +649,11 @@
 
   function renderFileList(files) {
     const list = (files || []).filter((f) =>
-      ['pdf', 'png', 'pptx'].includes((f.ext || '').toLowerCase())
+      ['pdf', 'png', 'pptx', 'json', 'cog', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes((f.ext || '').toLowerCase())
     );
     if (!list.length) {
       docList.innerHTML =
-        '<div class="doc-empty">No pdf, png, or pptx files found in your Documents folder.</div>';
+        '<div class="doc-empty">No supported files found in your Documents folder.</div>';
       return;
     }
     docList.innerHTML = '';
@@ -662,7 +662,7 @@
       btn.type = 'button';
       btn.className = 'doc-item' + (activeFilePath === f.path ? ' active' : '');
       const icon =
-        f.ext === 'pdf' ? 'picture_as_pdf' : f.ext === 'pptx' ? 'slideshow' : 'image';
+        f.ext === 'pdf' ? 'picture_as_pdf' : ['pptx', 'json', 'cog'].includes(f.ext) ? 'slideshow' : 'image';
       btn.innerHTML =
         '<span class="ext-badge">' +
         escapeHtml((f.ext || '').toUpperCase()) +
@@ -683,6 +683,11 @@
   }
 
   async function openLibraryFile(relPath) {
+    if (saveTimer) clearTimeout(saveTimer);
+    if (dirty) {
+      await saveDocument();
+      if (dirty) return;
+    }
     setStatus('Opening…', 'saving');
     try {
       const res = await fetch(`${API}/files/open`, {
@@ -697,9 +702,14 @@
       const opened = await res.json();
       activeFilePath = opened.path || relPath;
       docTitle.textContent = opened.title || opened.name || 'File';
-      document.title = docTitle.textContent + ' — Cognition PP';
+      document.title = docTitle.textContent + ' — XSlide';
       docId = null;
-      await openMediaFile(opened);
+      if (!opened.binary) {
+        applyPresentationDoc(opened);
+        activeFilePath = opened.path || relPath;
+      } else {
+        await openMediaFile(opened);
+      }
       loadFileList();
     } catch (e) {
       setStatus(String(e.message || e), 'error');
@@ -707,6 +717,11 @@
   }
 
   async function importFiles(fileList) {
+    if (saveTimer) clearTimeout(saveTimer);
+    if (dirty) {
+      await saveDocument();
+      if (dirty) return;
+    }
     for (const file of fileList) {
       const ext = (file.name.split('.').pop() || '').toLowerCase();
       if (['json', 'cog'].includes(ext)) {
@@ -715,6 +730,9 @@
           const doc = JSON.parse(text);
           if (doc.slides) {
             applyPresentationDoc(doc);
+            docId = null;
+            activeFilePath = null;
+            await saveDocument();
             continue;
           }
         } catch (e) {
@@ -734,7 +752,7 @@
         const opened = await res.json();
         activeFilePath = opened.path || file.name;
         docTitle.textContent = opened.title || file.name;
-        document.title = docTitle.textContent + ' — Cognition PP';
+        document.title = docTitle.textContent + ' — XSlide';
         docId = null;
         await openMediaFile(opened);
         setStatus('Imported ' + file.name);
@@ -753,7 +771,7 @@
     starred = !!doc.starred;
     starBtn.setAttribute('aria-pressed', String(starred));
     docTitle.textContent = doc.title || 'Untitled presentation';
-    document.title = docTitle.textContent + ' — Cognition PP';
+    document.title = docTitle.textContent + ' — XSlide';
     activeFilePath = doc.source_path || null;
     dirty = false;
     clearMediaViewer();
@@ -763,7 +781,11 @@
   }
 
   async function newPresentation() {
-    if (dirty && !confirm('Discard unsaved changes?')) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    if (dirty) {
+      await saveDocument();
+      if (dirty) return;
+    }
     pushUndo();
     slides = [emptyTitleSlide()];
     activeSlide = 0;
@@ -772,7 +794,7 @@
     starred = false;
     starBtn.setAttribute('aria-pressed', 'false');
     docTitle.textContent = 'Untitled presentation';
-    document.title = 'Untitled presentation — Cognition PP';
+    document.title = 'Untitled presentation — XSlide';
     dirty = false;
     selectedElId = null;
     clearMediaViewer();
@@ -829,6 +851,65 @@
       docId = doc.id;
       dirty = false;
       setStatus('Saved locally');
+    } catch (e) {
+      setStatus(String(e.message || e), 'error');
+    }
+  }
+
+  async function exportPresentation() {
+    if (viewMode === 'media') {
+      setStatus('Open an editable presentation to export', 'error');
+      return;
+    }
+    const format = $('export-format').value;
+    const title = (docTitle.textContent || '').trim() || 'presentation';
+    setStatus('Exporting…', 'saving');
+    try {
+      const exportSlides = format === 'pptx' ? JSON.parse(JSON.stringify(slides)) : slides;
+      if (format === 'pptx') {
+        for (const slide of exportSlides) {
+          for (const element of slide.elements || []) {
+            if (element.kind !== 'image' || !element.src) continue;
+            if (/^data:image\/(png|jpeg|jpg|gif);base64,/i.test(element.src)) continue;
+            element.src = await new Promise((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = image.naturalWidth;
+                canvas.height = image.naturalHeight;
+                const context = canvas.getContext('2d');
+                if (!context) return reject(new Error('Could not convert image for export'));
+                context.drawImage(image, 0, 0);
+                try { resolve(canvas.toDataURL('image/png')); }
+                catch { reject(new Error('Could not read image for export')); }
+              };
+              image.onerror = () => reject(new Error('Could not load image for export'));
+              image.src = element.src;
+            });
+          }
+        }
+      }
+      const res = await fetch(`${API}/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format, title, slides: exportSlides, active_slide: activeSlide }),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'Export failed');
+      }
+      const blob = await res.blob();
+      const match = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : `${title}.${format}`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setStatus('Exported ' + filename);
     } catch (e) {
       setStatus(String(e.message || e), 'error');
     }
@@ -1041,7 +1122,7 @@
     const next = cur === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     try {
-      localStorage.setItem('cognition-pp-theme', next);
+      localStorage.setItem('xslide-theme', next);
     } catch { /* ignore */ }
     const meta = document.getElementById('meta-theme-color');
     if (meta) meta.content = next === 'dark' ? '#000000' : '#ffffff';
@@ -1064,6 +1145,7 @@
   });
   refreshFiles.addEventListener('click', () => loadFileList());
   saveBtn.addEventListener('click', () => saveDocument());
+  $('export-btn').addEventListener('click', exportPresentation);
   themeToggle.addEventListener('click', () => toggleTheme());
   presentBtn.addEventListener('click', () => enterPresent());
   starBtn.addEventListener('click', () => {
@@ -1072,7 +1154,7 @@
     markDirty();
   });
   docTitle.addEventListener('input', () => {
-    document.title = (docTitle.textContent || 'Untitled') + ' — Cognition PP';
+    document.title = (docTitle.textContent || 'Untitled') + ' — XSlide';
     markDirty();
   });
 
@@ -1281,8 +1363,8 @@
     if (e.dataTransfer?.files?.length) importFiles(Array.from(e.dataTransfer.files));
   });
 
-  if (window.CognitionLiquidGlass?.attach) {
-    window.CognitionLiquidGlass.attach({ scrollEl: stageWrap });
+  if (window.XSuiteLiquidGlass?.attach) {
+    window.XSuiteLiquidGlass.attach({ scrollEl: stageWrap });
   }
 
   colBar.style.background = currentColor;
@@ -1293,6 +1375,22 @@
     setViewMode('presentation');
     renderAll();
     await loadFileList();
+    const launchToken = new URLSearchParams(window.location.search).get('launch');
+    if (launchToken) {
+      try {
+        const res = await fetch(`${API}/files/launch?token=` + encodeURIComponent(launchToken));
+        const opened = await res.json();
+        if (!res.ok) throw new Error(opened.error || 'Could not open launch file');
+        docId = null;
+        activeFilePath = null;
+        if (opened.binary) await openMediaFile(opened);
+        else applyPresentationDoc(opened);
+        setStatus('Opened ' + opened.name);
+        return;
+      } catch (e) {
+        setStatus(String(e.message || e), 'error');
+      }
+    }
     try {
       const res = await fetch(`${API}/documents`, {
         method: 'POST',

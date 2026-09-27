@@ -1,0 +1,64 @@
+name: Debian package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - name: Install Debian build dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git build-essential pkg-config libwebkit2gtk-4.1-dev libgtk-3-dev dpkg-dev desktop-file-utils python3 nodejs npm
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: |
+          curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Test backend, native host, and editor model
+        run: |
+          cargo test --locked
+          cargo test --locked --manifest-path native-host/Cargo.toml
+          npm test --if-present
+      - name: Build release binaries
+        run: |
+          cargo build --release --locked
+          cargo build --release --locked --manifest-path native-host/Cargo.toml
+      - name: Build Debian package
+        run: python3 scripts/package-deb.py XSlide
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xslide-deb
+          path: dist/debian/*.deb
+
+  install-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    steps:
+      - name: Install test tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y desktop-file-utils shared-mime-info
+      - uses: actions/download-artifact@v4
+        with:
+          name: xslide-deb
+          path: packages
+      - name: Install package with dependencies
+        run: DEBIAN_FRONTEND=noninteractive apt-get install -y ./packages/*.deb
+      - name: Check desktop entry and native launch
+        shell: bash
+        run: |
+          set -euo pipefail
+          desktop-file-validate /usr/share/applications/xslide.desktop
+          printf '{"title":"Debian launch check","slides":[]}' > /tmp/xsuite-launch.json
+          FILE=/tmp/xsuite-launch.json
+          XDG_DATA_HOME=/tmp/xsuite-smoke XSLIDE_NATIVE_HEADLESS_SECS=1 /usr/bin/xslide --headless "$FILE" > /tmp/xslide-smoke.log
+          grep -q 'native-host ready product=xslide' /tmp/xslide-smoke.log
+          test -f /usr/share/icons/hicolor/256x256/apps/xslide.png

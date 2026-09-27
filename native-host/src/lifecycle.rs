@@ -7,13 +7,13 @@ use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-/// Product identity for Cognitience PP native host.
-pub const PRODUCT_NAME: &str = "Cognitience PP";
-pub const BACKEND_STEM: &str = "cognition-pp";
+/// Product identity for XSlide native host.
+pub const PRODUCT_NAME: &str = "XSlide";
+pub const BACKEND_STEM: &str = "xslide";
 pub const DEFAULT_PORT: u16 = 8789;
-pub const DATA_DIR_NAME: &str = "cognition-pp-data";
-pub const WINDOW_TITLE: &str = "Cognitience PP";
-pub const APP_USER_MODEL_ID: &str = "com.cognitience.pp";
+pub const DATA_DIR_NAME: &str = "xslide-data";
+pub const WINDOW_TITLE: &str = "XSlide";
+pub const APP_USER_MODEL_ID: &str = "com.xslide.app";
 
 pub fn backend_exe_name() -> String {
     if cfg!(windows) {
@@ -45,7 +45,7 @@ pub fn resolve_static_dir(app_root: &Path, packaged: bool) -> PathBuf {
     app_root.join("static")
 }
 
-/// Data directory under a platform user-data base (e.g. `%APPDATA%/cognitience-wp`).
+/// Data directory under this product’s platform user-data base.
 pub fn resolve_data_dir(user_data_base: &Path) -> PathBuf {
     user_data_base.join(DATA_DIR_NAME)
 }
@@ -55,23 +55,19 @@ pub fn default_user_data_base() -> PathBuf {
     dirs::data_local_dir()
         .or_else(dirs::data_dir)
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("cognitience-pp")
+        .join("xslide")
 }
 
 /// Build the environment map the backend expects (same contract as Electron).
-pub fn build_backend_env(
-    port: u16,
-    static_dir: &Path,
-    data_dir: &Path,
-) -> HashMap<String, String> {
+pub fn build_backend_env(port: u16, static_dir: &Path, data_dir: &Path) -> HashMap<String, String> {
     let mut env = HashMap::new();
     env.insert("PORT".into(), port.to_string());
     env.insert(
-        "COGNITION_STATIC_DIR".into(),
+        "XSLIDE_STATIC_DIR".into(),
         static_dir.to_string_lossy().into_owned(),
     );
     env.insert(
-        "COGNITION_DATA_DIR".into(),
+        "XSLIDE_DATA_DIR".into(),
         data_dir.to_string_lossy().into_owned(),
     );
     if std::env::var_os("RUST_LOG").is_none() {
@@ -97,9 +93,8 @@ pub fn probe_health(port: u16) -> Result<u16, String> {
     stream
         .set_write_timeout(Some(Duration::from_secs(2)))
         .map_err(|e| e.to_string())?;
-    let req = format!(
-        "GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
-    );
+    let req =
+        format!("GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
     stream
         .write_all(req.as_bytes())
         .map_err(|e| e.to_string())?;
@@ -251,18 +246,14 @@ mod tests {
 
     #[test]
     fn build_backend_env_sets_contract_keys() {
-        let env = build_backend_env(
-            8789,
-            Path::new("C:\\pp\\static"),
-            Path::new("C:\\pp\\data"),
-        );
+        let env = build_backend_env(8789, Path::new("C:\\pp\\static"), Path::new("C:\\pp\\data"));
         assert_eq!(env.get("PORT").map(String::as_str), Some("8789"));
         assert_eq!(
-            env.get("COGNITION_STATIC_DIR").map(String::as_str),
+            env.get("XSLIDE_STATIC_DIR").map(String::as_str),
             Some("C:\\pp\\static")
         );
         assert_eq!(
-            env.get("COGNITION_DATA_DIR").map(String::as_str),
+            env.get("XSLIDE_DATA_DIR").map(String::as_str),
             Some("C:\\pp\\data")
         );
     }
@@ -290,11 +281,8 @@ mod tests {
     #[test]
     fn resolve_app_root_finds_static_walking_up() {
         let dir = tempdir().unwrap();
-        let product = dir.path().join("cognition-pp");
-        let nested = product
-            .join("native-host")
-            .join("target")
-            .join("release");
+        let product = dir.path().join("xslide");
+        let nested = product.join("native-host").join("target").join("release");
         fs::create_dir_all(&nested).unwrap();
         fs::create_dir_all(product.join("static")).unwrap();
         fs::write(product.join("static").join("index.html"), b"<html>").unwrap();
@@ -306,8 +294,8 @@ mod tests {
     #[test]
     fn product_constants_are_pp() {
         assert_eq!(DEFAULT_PORT, 8789);
-        assert_eq!(PRODUCT_NAME, "Cognitience PP");
-        assert_eq!(BACKEND_STEM, "cognition-pp");
-        assert_eq!(DATA_DIR_NAME, "cognition-pp-data");
+        assert_eq!(PRODUCT_NAME, "XSlide");
+        assert_eq!(BACKEND_STEM, "xslide");
+        assert_eq!(DATA_DIR_NAME, "xslide-data");
     }
 }

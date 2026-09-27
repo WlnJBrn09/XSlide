@@ -1,16 +1,16 @@
 [package]
-name = "cognition-pp"
-version = "0.1.0"
+name = "xslide"
+version = "1.1.0"
 edition = "2021"
-description = "Cognition PP — local-first presentation app"
+description = "XSlide — local-first presentation app"
 license = "MIT"
-authors = ["Cognitience"]
+authors = ["XSlide"]
 
 [dependencies]
 axum = { version = "0.8", features = ["macros", "multipart"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["fs", "cors", "trace"] }
+tower-http = { version = "0.6", features = ["fs", "trace"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }

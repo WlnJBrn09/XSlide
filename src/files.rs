@@ -11,7 +11,9 @@ use zip::ZipArchive;
 use crate::documents::{Slide, SlideElement};
 
 /// Extensions shown in the Documents sidebar.
-const LIST_EXT: &[&str] = &["pdf", "png", "pptx"];
+const LIST_EXT: &[&str] = &[
+    "pdf", "png", "pptx", "json", "cog", "jpg", "jpeg", "webp", "gif", "svg",
+];
 /// Also openable via Open/Import.
 const OPEN_EXT: &[&str] = &[
     "pdf", "png", "pptx", "json", "cog", "jpg", "jpeg", "webp", "gif", "svg",
@@ -76,7 +78,7 @@ impl std::fmt::Display for FileError {
 }
 
 pub fn resolve_documents_dir() -> PathBuf {
-    if let Ok(p) = std::env::var("COGNITION_DOCS_DIR") {
+    if let Ok(p) = std::env::var("XSLIDE_DOCS_DIR") {
         return PathBuf::from(p);
     }
     dirs::document_dir().unwrap_or_else(|| {
@@ -145,7 +147,7 @@ fn kind_for_ext(ext: &str) -> &'static str {
         "pdf" => "pdf",
         "png" | "jpg" | "jpeg" | "webp" | "gif" | "svg" => "image",
         "pptx" => "presentation",
-        "json" | "cog" => "cognition",
+        "json" | "cog" => "xslide",
         _ => "file",
     }
 }
@@ -225,14 +227,66 @@ pub fn open_bytes_with_options(
         return Err(FileError::Unsupported);
     }
     match ext {
-        "pdf" => binary_open(name, rel, ext, title, bytes, from_disk, "application/pdf", "pdf"),
-        "png" => binary_open(name, rel, ext, title, bytes, from_disk, "image/png", "image"),
-        "jpg" | "jpeg" => {
-            binary_open(name, rel, ext, title, bytes, from_disk, "image/jpeg", "image")
-        }
-        "webp" => binary_open(name, rel, ext, title, bytes, from_disk, "image/webp", "image"),
-        "gif" => binary_open(name, rel, ext, title, bytes, from_disk, "image/gif", "image"),
-        "svg" => binary_open(name, rel, ext, title, bytes, from_disk, "image/svg+xml", "image"),
+        "pdf" => binary_open(
+            name,
+            rel,
+            ext,
+            title,
+            bytes,
+            from_disk,
+            "application/pdf",
+            "pdf",
+        ),
+        "png" => binary_open(
+            name,
+            rel,
+            ext,
+            title,
+            bytes,
+            from_disk,
+            "image/png",
+            "image",
+        ),
+        "jpg" | "jpeg" => binary_open(
+            name,
+            rel,
+            ext,
+            title,
+            bytes,
+            from_disk,
+            "image/jpeg",
+            "image",
+        ),
+        "webp" => binary_open(
+            name,
+            rel,
+            ext,
+            title,
+            bytes,
+            from_disk,
+            "image/webp",
+            "image",
+        ),
+        "gif" => binary_open(
+            name,
+            rel,
+            ext,
+            title,
+            bytes,
+            from_disk,
+            "image/gif",
+            "image",
+        ),
+        "svg" => binary_open(
+            name,
+            rel,
+            ext,
+            title,
+            bytes,
+            from_disk,
+            "image/svg+xml",
+            "image",
+        ),
         "pptx" => open_pptx(name, rel, title, bytes, from_disk),
         "json" | "cog" => open_presentation_json(name, rel, ext, title, bytes),
         _ => Err(FileError::Unsupported),
@@ -249,6 +303,20 @@ fn binary_open(
     mime: &str,
     format: &str,
 ) -> Result<OpenedFile, FileError> {
+    let valid = match ext {
+        "pdf" => bytes.starts_with(b"%PDF-"),
+        "png" => bytes.starts_with(b"\x89PNG\r\n\x1a\n"),
+        "jpg" | "jpeg" => bytes.starts_with(&[0xff, 0xd8, 0xff]),
+        "gif" => bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a"),
+        "webp" => bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP"),
+        "svg" => std::str::from_utf8(bytes)
+            .map(|s| s.contains("<svg"))
+            .unwrap_or(false),
+        _ => true,
+    };
+    if !valid {
+        return Err(FileError::Other(format!("invalid {ext} file")));
+    }
     let view_url = if from_disk && !rel.is_empty() {
         Some(format!("/api/files/raw?path={}", urlencoding_encode(rel)))
     } else {
@@ -317,7 +385,17 @@ fn media_cover_slide(title: &str, kind: &str) -> Slide {
         id: Uuid::new_v4().to_string(),
         background: Some("#ffffff".into()),
         elements: vec![
-            el("title", 8.0, 36.0, 84.0, 18.0, title.into(), 32.0, "center", Some(true)),
+            el(
+                "title",
+                8.0,
+                36.0,
+                84.0,
+                18.0,
+                title.into(),
+                32.0,
+                "center",
+                Some(true),
+            ),
             el(
                 "subtitle",
                 12.0,
@@ -369,25 +447,49 @@ fn open_pptx(
     })
 }
 
-/// Extract text runs from each ppt/slides/slideN.xml into presentation slides.
+/// Import editable text and images at their original slide coordinates.
 fn parse_pptx_slides(bytes: &[u8]) -> Result<Vec<Slide>, FileError> {
     let cursor = Cursor::new(bytes);
     let mut archive = ZipArchive::new(cursor).map_err(|e| FileError::Other(e.to_string()))?;
 
     let mut slide_names: Vec<String> = Vec::new();
     for i in 0..archive.len() {
-        let file = archive.by_index(i).map_err(|e| FileError::Other(e.to_string()))?;
+        let file = archive
+            .by_index(i)
+            .map_err(|e| FileError::Other(e.to_string()))?;
         let name = file.name().to_string();
         if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") && !name.contains("_rels")
         {
             slide_names.push(name);
         }
     }
-    slide_names.sort_by(|a, b| {
-        let na = extract_slide_num(a);
-        let nb = extract_slide_num(b);
-        na.cmp(&nb)
-    });
+    slide_names.sort_by_key(|a| extract_slide_num(a));
+    // The numeric file names do not determine presentation order. A reordered
+    // deck keeps the old names and changes only the relationships in the list.
+    if let (Ok(pres), Ok(rels)) = (
+        read_zip_text(&mut archive, "ppt/presentation.xml"),
+        read_zip_text(&mut archive, "ppt/_rels/presentation.xml.rels"),
+    ) {
+        let targets: std::collections::HashMap<String, String> = tag_blocks(&rels, "Relationship")
+            .into_iter()
+            .filter_map(|tag| Some((tag_attr(tag, "Id")?, tag_attr(tag, "Target")?)))
+            .collect();
+        let ordered: Vec<String> = tag_blocks(&pres, "p:sldId")
+            .into_iter()
+            .filter_map(|tag| targets.get(&tag_attr(tag, "r:id")?).cloned())
+            .map(|target| {
+                if target.starts_with('/') {
+                    target.trim_start_matches('/').to_string()
+                } else {
+                    format!("ppt/{target}")
+                }
+            })
+            .filter(|path| slide_names.contains(path))
+            .collect();
+        if ordered.len() == slide_names.len() {
+            slide_names = ordered;
+        }
+    }
 
     if slide_names.is_empty() {
         return Ok(vec![crate::documents::default_title_slide()]);
@@ -395,30 +497,147 @@ fn parse_pptx_slides(bytes: &[u8]) -> Result<Vec<Slide>, FileError> {
 
     let mut slides = Vec::new();
     for path in slide_names {
-        let mut file = archive
-            .by_name(&path)
-            .map_err(|e| FileError::Other(e.to_string()))?;
-        let mut xml = String::new();
-        file.read_to_string(&mut xml)
-            .map_err(|e| FileError::Other(e.to_string()))?;
-        let texts = extract_a_t_texts(&xml);
+        let xml = read_zip_text(&mut archive, &path)?;
+        let rel_path = path.replacen("ppt/slides/", "ppt/slides/_rels/", 1) + ".rels";
+        let image_targets: std::collections::HashMap<String, String> =
+            read_zip_text(&mut archive, &rel_path)
+                .ok()
+                .map(|rels| {
+                    tag_blocks(&rels, "Relationship")
+                        .into_iter()
+                        .filter_map(|tag| Some((tag_attr(tag, "Id")?, tag_attr(tag, "Target")?)))
+                        .collect()
+                })
+                .unwrap_or_default();
         let mut elements = Vec::new();
-        if let Some(first) = texts.first() {
-            elements.push(el(
-                "title",
-                8.0,
-                18.0,
-                84.0,
-                16.0,
-                first.clone(),
-                32.0,
-                "left",
-                Some(true),
-            ));
-        }
-        if texts.len() > 1 {
-            let body = texts[1..].join("\n");
-            elements.push(el("text", 8.0, 40.0, 84.0, 50.0, body, 18.0, "left", None));
+        let mut nodes = tag_blocks(&xml, "p:sp")
+            .into_iter()
+            .map(|block| {
+                (
+                    block.as_ptr() as usize - xml.as_ptr() as usize,
+                    false,
+                    block,
+                )
+            })
+            .chain(
+                tag_blocks(&xml, "p:pic")
+                    .into_iter()
+                    .map(|block| (block.as_ptr() as usize - xml.as_ptr() as usize, true, block)),
+            )
+            .collect::<Vec<_>>();
+        nodes.sort_by_key(|(offset, _, _)| *offset);
+        for (_, is_picture, shape) in nodes {
+            if is_picture {
+                let pic = shape;
+                let Some(rid) = tag_blocks(pic, "a:blip")
+                    .first()
+                    .and_then(|b| tag_attr(b, "r:embed"))
+                else {
+                    continue;
+                };
+                let Some(target) = image_targets.get(&rid) else {
+                    continue;
+                };
+                let Some(filename) = target.rsplit('/').next() else {
+                    continue;
+                };
+                let media_path = format!("ppt/media/{filename}");
+                let Ok(mut media) = archive.by_name(&media_path) else {
+                    continue;
+                };
+                let ext = filename
+                    .rsplit('.')
+                    .next()
+                    .unwrap_or("")
+                    .to_ascii_lowercase();
+                let mime = match ext.as_str() {
+                    "png" => "image/png",
+                    "jpg" | "jpeg" => "image/jpeg",
+                    "gif" => "image/gif",
+                    _ => continue,
+                };
+                let mut data = Vec::new();
+                media
+                    .read_to_end(&mut data)
+                    .map_err(|e| FileError::Other(e.to_string()))?;
+                use base64::Engine;
+                let (x, y, w, h) = shape_geometry(pic, elements.len());
+                let mut item = el("image", x, y, w, h, String::new(), 14.0, "left", None);
+                item.src = Some(format!(
+                    "data:{mime};base64,{}",
+                    base64::engine::general_purpose::STANDARD.encode(data)
+                ));
+                item.mime = Some(mime.into());
+                elements.push(item);
+                continue;
+            }
+            let text = tag_blocks(shape, "a:p")
+                .into_iter()
+                .map(|p| extract_a_t_texts(p).join(""))
+                .collect::<Vec<_>>()
+                .join("\n");
+            if text.trim().is_empty() {
+                continue;
+            }
+            let (x, y, w, h) = shape_geometry(shape, elements.len());
+            let font_size = tag_blocks(shape, "a:rPr")
+                .first()
+                .and_then(|r| tag_attr(r, "sz"))
+                .and_then(|v| v.parse::<f64>().ok())
+                .map(|v| v / 100.0)
+                .unwrap_or(18.0);
+            let align = tag_blocks(shape, "a:pPr")
+                .first()
+                .and_then(|p| tag_attr(p, "algn"))
+                .map(|s| match s.as_str() {
+                    "ctr" => "center",
+                    "r" => "right",
+                    "just" => "justify",
+                    _ => "left",
+                })
+                .unwrap_or("left");
+            let kind = if elements.is_empty() { "title" } else { "text" };
+            let mut item = el(kind, x, y, w, h, text, font_size, align, None);
+            if let Some(run) = tag_blocks(shape, "a:rPr").first() {
+                item.bold = tag_attr(run, "b").map(|s| s == "1");
+                item.italic = tag_attr(run, "i").map(|s| s == "1");
+                item.underline = tag_attr(run, "u").map(|s| s == "sng");
+                item.strikethrough = tag_attr(run, "strike").map(|s| s == "sngStrike");
+                item.vertical_align = tag_attr(run, "baseline")
+                    .and_then(|s| s.parse::<i32>().ok())
+                    .and_then(|n| {
+                        if n > 0 {
+                            Some("super".into())
+                        } else if n < 0 {
+                            Some("sub".into())
+                        } else {
+                            None
+                        }
+                    });
+                item.color = tag_blocks(run, "a:solidFill")
+                    .first()
+                    .and_then(|fill| {
+                        tag_blocks(fill, "a:srgbClr")
+                            .first()
+                            .and_then(|c| tag_attr(c, "val"))
+                    })
+                    .map(|s| format!("#{s}"));
+                item.highlight = tag_blocks(run, "a:highlight")
+                    .first()
+                    .and_then(|h| {
+                        tag_blocks(h, "a:srgbClr")
+                            .first()
+                            .and_then(|c| tag_attr(c, "val"))
+                    })
+                    .map(|s| format!("#{s}"));
+                if let Some(font) = tag_blocks(run, "a:latin")
+                    .first()
+                    .and_then(|f| tag_attr(f, "typeface"))
+                {
+                    item.font_family = Some(font);
+                }
+            }
+            elements.push(item);
         }
         if elements.is_empty() {
             elements.push(el(
@@ -433,13 +652,97 @@ fn parse_pptx_slides(bytes: &[u8]) -> Result<Vec<Slide>, FileError> {
                 None,
             ));
         }
+        let background = tag_blocks(&xml, "p:bg")
+            .first()
+            .and_then(|bg| {
+                tag_blocks(bg, "a:srgbClr")
+                    .first()
+                    .and_then(|c| tag_attr(c, "val"))
+            })
+            .map(|s| format!("#{s}"))
+            .or_else(|| Some("#ffffff".into()));
         slides.push(Slide {
             id: Uuid::new_v4().to_string(),
             elements,
-            background: Some("#ffffff".into()),
+            background,
         });
     }
     Ok(slides)
+}
+
+fn read_zip_text(archive: &mut ZipArchive<Cursor<&[u8]>>, name: &str) -> Result<String, FileError> {
+    let mut file = archive
+        .by_name(name)
+        .map_err(|e| FileError::Other(e.to_string()))?;
+    let mut xml = String::new();
+    file.read_to_string(&mut xml)
+        .map_err(|e| FileError::Other(e.to_string()))?;
+    Ok(xml)
+}
+
+fn tag_blocks<'a>(xml: &'a str, tag: &str) -> Vec<&'a str> {
+    let mut out = Vec::new();
+    let needle = format!("<{tag}");
+    let close = format!("</{tag}>");
+    let mut rest = xml;
+    while let Some(start) = rest.find(&needle) {
+        let tag_start = &rest[start..];
+        let next = tag_start.as_bytes().get(needle.len()).copied();
+        if !matches!(
+            next,
+            Some(b'>') | Some(b'/') | Some(b' ') | Some(b'\t') | Some(b'\n')
+        ) {
+            rest = &tag_start[needle.len()..];
+            continue;
+        }
+        let Some(open_end) = tag_start.find('>') else {
+            break;
+        };
+        if tag_start[..=open_end].ends_with("/>") {
+            out.push(&tag_start[..=open_end]);
+            rest = &tag_start[open_end + 1..];
+        } else if let Some(end) = tag_start[open_end + 1..].find(&close) {
+            let full_end = open_end + 1 + end + close.len();
+            out.push(&tag_start[..full_end]);
+            rest = &tag_start[full_end..];
+        } else {
+            break;
+        }
+    }
+    out
+}
+
+fn tag_attr(tag: &str, key: &str) -> Option<String> {
+    let head = tag.split_once('>')?.0;
+    let needle = format!("{key}=\"");
+    // Require whitespace before the name, so `id` never reads `r:id`.
+    let pos = head.find(&format!(" {needle}"))? + 1 + needle.len();
+    let end = head[pos..].find('"')?;
+    Some(decode_xml_entities(&head[pos..pos + end]))
+}
+
+fn shape_geometry(shape: &str, index: usize) -> (f64, f64, f64, f64) {
+    let fallback = (8.0, 15.0 + (index as f64 * 12.0), 84.0, 12.0);
+    let Some(xfrm) = tag_blocks(shape, "a:xfrm").first().copied() else {
+        return fallback;
+    };
+    let Some(off) = tag_blocks(xfrm, "a:off").first().copied() else {
+        return fallback;
+    };
+    let Some(ext) = tag_blocks(xfrm, "a:ext").first().copied() else {
+        return fallback;
+    };
+    let value = |tag: &str, key: &str, scale: f64| {
+        tag_attr(tag, key)
+            .and_then(|s| s.parse::<f64>().ok())
+            .map(|v| (v / scale * 100.0).clamp(0.0, 100.0))
+    };
+    (
+        value(off, "x", 12_192_000.0).unwrap_or(fallback.0),
+        value(off, "y", 6_858_000.0).unwrap_or(fallback.1),
+        value(ext, "cx", 12_192_000.0).unwrap_or(fallback.2),
+        value(ext, "cy", 6_858_000.0).unwrap_or(fallback.3),
+    )
 }
 
 fn extract_slide_num(name: &str) -> u32 {
@@ -450,31 +753,46 @@ fn extract_slide_num(name: &str) -> u32 {
 }
 
 fn extract_a_t_texts(xml: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut rest = xml;
-    while let Some(start) = rest.find("<a:t") {
-        let after = &rest[start..];
-        let content_start = match after.find('>') {
-            Some(i) => i + 1,
-            None => break,
-        };
-        let body = &after[content_start..];
-        if let Some(end) = body.find("</a:t>") {
-            let text = body[..end].trim();
-            // decode basic entities
-            let text = text
-                .replace("&amp;", "&")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .replace("&quot;", "\"")
-                .replace("&apos;", "'");
-            if !text.is_empty() {
-                out.push(text);
+    tag_blocks(xml, "a:t")
+        .into_iter()
+        .filter_map(|block| {
+            block
+                .split_once('>')
+                .and_then(|(_, tail)| tail.split_once("</a:t>"))
+                .map(|(text, _)| decode_xml_entities(text))
+        })
+        .collect()
+}
+
+fn decode_xml_entities(s: &str) -> String {
+    let mut out = String::new();
+    let mut rest = s;
+    while !rest.is_empty() {
+        if let Some(after) = rest.strip_prefix('&') {
+            if let Some(end) = after.find(';').filter(|n| *n <= 12) {
+                let entity = &after[..end];
+                let decoded = match entity {
+                    "amp" => Some('&'),
+                    "lt" => Some('<'),
+                    "gt" => Some('>'),
+                    "quot" => Some('"'),
+                    "apos" => Some('\''),
+                    e if e.starts_with("#x") => u32::from_str_radix(&e[2..], 16)
+                        .ok()
+                        .and_then(char::from_u32),
+                    e if e.starts_with('#') => e[1..].parse::<u32>().ok().and_then(char::from_u32),
+                    _ => None,
+                };
+                if let Some(c) = decoded {
+                    out.push(c);
+                    rest = &after[end + 1..];
+                    continue;
+                }
             }
-            rest = &body[end + 6..];
-        } else {
-            break;
         }
+        let c = rest.chars().next().unwrap();
+        out.push(c);
+        rest = &rest[c.len_utf8()..];
     }
     out
 }
@@ -490,6 +808,7 @@ fn open_presentation_json(
     struct Doc {
         title: Option<String>,
         slides: Option<Vec<Slide>>,
+        active_slide: Option<usize>,
     }
     let doc: Doc = serde_json::from_slice(bytes)
         .map_err(|e| FileError::Other(format!("invalid presentation json: {e}")))?;
@@ -497,14 +816,18 @@ fn open_presentation_json(
         .slides
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| vec![crate::documents::default_title_slide()]);
+    let active_slide = doc
+        .active_slide
+        .unwrap_or(0)
+        .min(slides.len().saturating_sub(1));
     Ok(OpenedFile {
         name: name.into(),
         path: rel.into(),
         ext: ext.into(),
         title: doc.title.unwrap_or_else(|| title.into()),
-        format: "cognition".into(),
+        format: "xslide".into(),
         slides,
-        active_slide: 0,
+        active_slide,
         binary: false,
         view_url: None,
         binary_base64: None,

@@ -25,7 +25,7 @@ jobs:
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CognitiencePP-windows
+          name: XSlide-windows
           path: dist/*_win.zip
 
   macos:
@@ -40,18 +40,18 @@ jobs:
       - name: Stage portable layout
         run: |
           VER=$(node -p "require('./package.json').version")
-          OUT="dist/CognitiencePP_v${VER}_mac_$(uname -m)"
+          OUT="dist/XSlide_v${VER}_mac_$(uname -m)"
           mkdir -p "$OUT/backend" "$OUT/build"
-          cp native-host/target/release/cognition-pp-native "$OUT/CognitiencePP"
-          cp target/release/cognition-pp "$OUT/backend/cognition-pp"
-          chmod +x "$OUT/CognitiencePP" "$OUT/backend/cognition-pp"
+          cp native-host/target/release/xslide-native "$OUT/XSlide"
+          cp target/release/xslide "$OUT/backend/xslide"
+          chmod +x "$OUT/XSlide" "$OUT/backend/xslide"
           cp -R static "$OUT/static"
           if [ -f build/icon.png ]; then cp build/icon.png "$OUT/build/icon.png"; fi
-          (cd dist && zip -r "CognitiencePP_v${VER}_mac_$(uname -m).zip" "CognitiencePP_v${VER}_mac_$(uname -m)")
+          (cd dist && zip -r "XSlide_v${VER}_mac_$(uname -m).zip" "XSlide_v${VER}_mac_$(uname -m)")
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CognitiencePP-macos
+          name: XSlide-macos
           path: dist/*_mac_*.zip
 
   linux:
@@ -70,16 +70,16 @@ jobs:
       - name: Stage portable layout
         run: |
           VER=$(node -p "require('./package.json').version")
-          OUT="dist/CognitiencePP_v${VER}_linux_x64"
+          OUT="dist/XSlide_v${VER}_linux_x64"
           mkdir -p "$OUT/backend" "$OUT/build"
-          cp native-host/target/release/cognition-pp-native "$OUT/CognitiencePP"
-          cp target/release/cognition-pp "$OUT/backend/cognition-pp"
-          chmod +x "$OUT/CognitiencePP" "$OUT/backend/cognition-pp"
+          cp native-host/target/release/xslide-native "$OUT/XSlide"
+          cp target/release/xslide "$OUT/backend/xslide"
+          chmod +x "$OUT/XSlide" "$OUT/backend/xslide"
           cp -R static "$OUT/static"
           if [ -f build/icon.png ]; then cp build/icon.png "$OUT/build/icon.png"; fi
-          (cd dist && tar -czf "CognitiencePP_v${VER}_linux_x64.tar.gz" "CognitiencePP_v${VER}_linux_x64")
+          (cd dist && tar -czf "XSlide_v${VER}_linux_x64.tar.gz" "XSlide_v${VER}_linux_x64")
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CognitiencePP-linux
+          name: XSlide-linux
           path: dist/*_linux_*.tar.gz

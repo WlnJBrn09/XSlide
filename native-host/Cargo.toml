@@ -1,17 +1,18 @@
 [package]
-name = "cognition-pp-native"
-version = "0.1.0"
+name = "xslide-native"
+version = "1.1.0"
 edition = "2021"
-description = "Cognitience PP — native Windows host (WebView2 + local Rust backend)"
+description = "XSlide — native system WebView host with local Rust backend"
 license = "MIT"
-authors = ["Cognitience"]
+authors = ["XSlide"]
 
 [[bin]]
-name = "cognition-pp-native"
+name = "xslide-native"
 path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+rand = "0.8"
 dirs = "6"
 image = { version = "0.25", default-features = false, features = ["png"] }
 tao = "0.32"
