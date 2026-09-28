@@ -13,11 +13,7 @@
     "native:build": "cargo build --release && cargo build --release --manifest-path native-host/Cargo.toml",
     "native:headless": "npm run native:build && node scripts/run-native.js --headless",
     "icon": "node scripts/make-icon.js",
-    "dist": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-native-win.ps1",
     "dist:deb": "npm run native:build && python3 scripts/package-deb.py XSlide",
-    "dist:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-native-win.ps1"
-  },
-  "devDependencies": {
-    "png-to-ico": "^2.1.8"
+    "dist:rpm": "npm run native:build && python3 scripts/package-rpm.py XSlide"
   }
 }

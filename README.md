@@ -4,15 +4,16 @@ Local-first presentation app with liquid-glass UI and a **Rust** backend.
 
 ## Desktop app (native)
 
-No Electron. WebView2 / WebKit host + local Rust backend.
+No Electron. Native WebKitGTK host + local Rust backend.
 
 ```bash
 npm run native:build
 npm run native
-npm run dist
+npm run dist:deb   # Debian/Ubuntu .deb
+npm run dist:rpm   # Fedora/RHEL/openSUSE .rpm
 ```
 
-Port **8789**. Package: `dist/XSlide_v*_win.zip`
+Port **8789**.
 
 ## Dev server
 
