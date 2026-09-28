@@ -899,8 +899,10 @@
         throw new Error(error.error || 'Export failed');
       }
       const blob = await res.blob();
-      const match = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
-      const filename = match ? match[1] : `${title}.${format}`;
+      const cd = res.headers.get('Content-Disposition') || '';
+      const star = cd.match(/filename\*=UTF-8''([^;]+)/i);
+      const match = cd.match(/filename="([^"]+)"/);
+      const filename = star ? decodeURIComponent(star[1]) : match ? match[1] : `${title}.${format}`;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
