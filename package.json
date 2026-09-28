@@ -1,11 +1,12 @@
 {
   "name": "xslide",
   "version": "1.1.0",
-  "description": "XSlide — local-first presentation app with liquid glass UI and Rust backend",
+  "description": "XSlide — local-first presentation app with CruxOS UI and Rust backend",
   "author": "XSlide",
   "license": "MIT",
   "private": true,
   "scripts": {
+    "test": "node scripts/test-design.js",
     "backend": "cargo run --release",
     "backend:build": "cargo build --release",
     "start": "cargo run",

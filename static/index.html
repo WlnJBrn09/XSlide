@@ -21,22 +21,11 @@
   </script>
   <link rel="icon" type="image/png" href="assets/logo.png"/>
 
-
-
+  <link rel="stylesheet" href="crux.css"/>
 
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <svg class="lg-filter-defs" aria-hidden="true" focusable="false">
-    <defs>
-      <!-- Kept for optional decorative layers; never applied on backdrop-filter nodes -->
-      <filter id="lg-refract" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-        <feTurbulence type="fractalNoise" baseFrequency="0.02 0.035" numOctaves="2" seed="3" result="noise"/>
-        <feGaussianBlur in="noise" stdDeviation="0.8" result="softNoise"/>
-        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="4" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
-    </defs>
-  </svg>
 
   <input type="file" id="file-open-input" class="sr-only" accept=".pdf,.png,.pptx,.json,.cog,.jpg,.jpeg" multiple/>
   <input type="file" id="presentation-open-input" class="sr-only" accept=".pptx,.json,.cog,.pdf,.png"/>
@@ -45,9 +34,9 @@
   <input type="file" id="insert-audio-input" class="sr-only" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"/>
 
   <div id="app">
-    <aside id="sidebar" class="liquid-glass liquid-glass--medium glass glass-medium" aria-label="Library">
+    <aside id="sidebar" class="panel panel--muted" aria-label="Library">
       <div class="sidebar-brand">
-        <img src="assets/logo.png" alt="" class="sidebar-logo" width="36" height="36"/>
+        <img src="assets/logo.svg" alt="" class="sidebar-logo" width="36" height="36"/>
         <div>
           <div class="brand-name">XSlide</div>
           <div class="brand-sub">Presentations</div>
@@ -55,18 +44,18 @@
       </div>
       <div class="sidebar-actions">
         <button type="button" class="sidebar-btn pressable" id="sidebar-new">
-          <span class="material-symbols-outlined" aria-hidden="true">slideshow</span>
+          <span class="icon" aria-hidden="true">presentation</span>
           New Presentation
         </button>
         <button type="button" class="sidebar-btn pressable" id="sidebar-open">
-          <span class="material-symbols-outlined" aria-hidden="true">folder_open</span>
+          <span class="icon" aria-hidden="true">folder-open</span>
           Open Presentation
         </button>
       </div>
       <div class="tabs-head">
         <span id="docs-folder-label">Library</span>
         <button type="button" class="icon-btn pressable sm" id="refresh-files" title="Refresh file list" aria-label="Refresh">
-          <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+          <span class="icon" aria-hidden="true">arrows-clockwise</span>
         </button>
       </div>
       <div class="file-hint">pdf · png · pptx</div>
@@ -74,17 +63,17 @@
     </aside>
 
     <div id="main-col">
-      <header id="header" class="liquid-glass liquid-glass--heavy glass glass-heavy">
+      <header id="header" class="panel">
         <div class="header-top">
           <div class="header-left">
             <button type="button" class="docs-icon-btn pressable" aria-label="XSlide" title="XSlide">
-              <img src="assets/logo.png" alt="XSlide" class="app-logo" width="40" height="40"/>
+              <img src="assets/logo.svg" alt="XSlide" class="app-logo" width="40" height="40"/>
             </button>
             <div class="title-block">
               <div class="title-row">
                 <div class="doc-title" id="doc-title" contenteditable="true" spellcheck="false" role="textbox" aria-label="Presentation title">Untitled presentation</div>
                 <button type="button" class="icon-btn pressable" id="star-btn" title="Star" aria-label="Star" aria-pressed="false">
-                  <span class="material-symbols-outlined icon-star" aria-hidden="true">star</span>
+                  <span class="icon icon-star" aria-hidden="true">star</span>
                 </button>
                 <span class="status-pill" id="status-text" aria-live="polite">Saved locally</span>
               </div>
@@ -92,15 +81,15 @@
           </div>
           <div class="header-actions">
             <button type="button" class="glass-btn pressable" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
-              <span class="material-symbols-outlined icon-light" aria-hidden="true">dark_mode</span>
-              <span class="material-symbols-outlined icon-dark" aria-hidden="true">light_mode</span>
+              <span class="icon icon-light" aria-hidden="true">moon</span>
+              <span class="icon icon-dark" aria-hidden="true">sun</span>
             </button>
             <button type="button" class="glass-btn pressable" id="present-btn" title="Present (F5)" aria-label="Present">
-              <span class="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+              <span class="icon" aria-hidden="true">play</span>
               Present
             </button>
             <button type="button" class="glass-btn pressable" id="save-btn" title="Save (Ctrl+S)" aria-label="Save">
-              <span class="material-symbols-outlined" aria-hidden="true">save</span>
+              <span class="icon" aria-hidden="true">floppy-disk</span>
               Save
             </button>
             <label class="sr-only" for="export-format">Export format</label>
@@ -114,43 +103,43 @@
         </div>
 
         <div class="toolbar-area">
-          <div class="toolbar-pill liquid-glass liquid-glass--light glass glass-light" id="toolbar" role="toolbar" aria-label="Editing">
+          <div class="toolbar-pill panel panel--muted" id="toolbar" role="toolbar" aria-label="Editing">
             <div class="toolbar-scroll">
               <!-- Insert (+) -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="insert-btn" title="Insert" aria-label="Insert" aria-haspopup="menu" aria-expanded="false">
-                  <span class="material-symbols-outlined" aria-hidden="true">add_box</span>
+                  <span class="icon" aria-hidden="true">plus-square</span>
                 </button>
-                <div id="insert-menu" class="glass-menu liquid-glass liquid-glass--heavy hidden" role="menu" aria-label="Insert">
+                <div id="insert-menu" class="glass-menu hidden" role="menu" aria-label="Insert">
                   <button type="button" class="menu-option" data-insert="image" role="menuitem">
-                    <span class="material-symbols-outlined" aria-hidden="true">image</span> Image / PDF page
+                    <span class="icon" aria-hidden="true">image</span> Image / PDF page
                   </button>
                   <button type="button" class="menu-option" data-insert="video" role="menuitem">
-                    <span class="material-symbols-outlined" aria-hidden="true">movie</span> Video
+                    <span class="icon" aria-hidden="true">film-strip</span> Video
                   </button>
                   <button type="button" class="menu-option" data-insert="audio" role="menuitem">
-                    <span class="material-symbols-outlined" aria-hidden="true">audio_file</span> Audio
+                    <span class="icon" aria-hidden="true">file-audio</span> Audio
                   </button>
                   <button type="button" class="menu-option" data-insert="text" role="menuitem">
-                    <span class="material-symbols-outlined" aria-hidden="true">text_fields</span> Text box
+                    <span class="icon" aria-hidden="true">text-t</span> Text box
                   </button>
                 </div>
               </div>
 
               <button type="button" class="t-icon pressable" id="add-slide-btn" title="Add slide" aria-label="Add slide">
-                <span class="material-symbols-outlined" aria-hidden="true">note_add</span>
+                <span class="icon" aria-hidden="true">file-plus</span>
               </button>
               <button type="button" class="t-icon pressable" id="del-slide-btn" title="Delete slide" aria-label="Delete slide">
-                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                <span class="icon" aria-hidden="true">trash</span>
               </button>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
 
               <button type="button" class="t-icon pressable" id="undo-btn" title="Undo (Ctrl+Z)" aria-label="Undo">
-                <span class="material-symbols-outlined" aria-hidden="true">undo</span>
+                <span class="icon" aria-hidden="true">arrow-counter-clockwise</span>
               </button>
               <button type="button" class="t-icon pressable" id="redo-btn" title="Redo (Ctrl+Y)" aria-label="Redo">
-                <span class="material-symbols-outlined" aria-hidden="true">redo</span>
+                <span class="icon" aria-hidden="true">arrow-clockwise</span>
               </button>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
@@ -159,9 +148,9 @@
               <div class="tb-wrap">
                 <button type="button" class="t-label pressable font-drop" id="font-btn" title="Font" aria-haspopup="listbox" aria-expanded="false">
                   <span id="font-label">Inter</span>
-                  <span class="material-symbols-outlined sm" aria-hidden="true">arrow_drop_down</span>
+                  <span class="icon sm" aria-hidden="true">caret-down</span>
                 </button>
-                <div id="font-menu" class="glass-menu liquid-glass liquid-glass--heavy hidden" role="listbox" aria-label="Font family">
+                <div id="font-menu" class="glass-menu hidden" role="listbox" aria-label="Font family">
                   <button type="button" class="menu-option font-option" data-font="Inter" style="font-family:Inter,sans-serif">Inter</button>
                   <button type="button" class="menu-option font-option" data-font="Roboto" style="font-family:Roboto,sans-serif">Roboto</button>
                   <button type="button" class="menu-option font-option" data-font="Open Sans" style="font-family:'Open Sans',sans-serif">Open Sans</button>
@@ -175,35 +164,35 @@
                 </div>
               </div>
 
-              <div class="font-size-box glass-inset" role="group" aria-label="Font size">
+              <div class="font-size-box inset-field" role="group" aria-label="Font size">
                 <button type="button" class="t-icon mini pressable" id="fs-minus" title="Decrease font size" aria-label="Decrease font size">
-                  <span class="material-symbols-outlined" aria-hidden="true">remove</span>
+                  <span class="icon" aria-hidden="true">minus</span>
                 </button>
                 <input type="text" class="fs-val" id="fs-val" value="18" inputmode="numeric" aria-label="Font size"/>
                 <button type="button" class="t-icon mini pressable" id="fs-plus" title="Increase font size" aria-label="Increase font size">
-                  <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                  <span class="icon" aria-hidden="true">plus</span>
                 </button>
               </div>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
 
               <button type="button" class="t-icon pressable fmt" data-cmd="bold" title="Bold" aria-label="Bold">
-                <span class="material-symbols-outlined" aria-hidden="true">format_bold</span>
+                <span class="icon" aria-hidden="true">text-b</span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="italic" title="Italic" aria-label="Italic">
-                <span class="material-symbols-outlined" aria-hidden="true">format_italic</span>
+                <span class="icon" aria-hidden="true">text-italic</span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="underline" title="Underline" aria-label="Underline">
-                <span class="material-symbols-outlined" aria-hidden="true">format_underlined</span>
+                <span class="icon" aria-hidden="true">text-underline</span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="strikethrough" title="Strikethrough" aria-label="Strikethrough">
-                <span class="material-symbols-outlined" aria-hidden="true">strikethrough_s</span>
+                <span class="icon" aria-hidden="true">text-strikethrough</span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="superscript" title="Superscript" aria-label="Superscript">
-                <span class="material-symbols-outlined" aria-hidden="true">superscript</span>
+                <span class="icon" aria-hidden="true">text-superscript</span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="subscript" title="Subscript" aria-label="Subscript">
-                <span class="material-symbols-outlined" aria-hidden="true">subscript</span>
+                <span class="icon" aria-hidden="true">text-subscript</span>
               </button>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
@@ -211,19 +200,19 @@
               <!-- Text color -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="color-btn" title="Text color" aria-label="Text color" aria-haspopup="dialog">
-                  <span class="material-symbols-outlined" aria-hidden="true">format_color_text</span>
+                  <span class="icon" aria-hidden="true">text-a-underline</span>
                   <i class="col-bar" id="col-bar" aria-hidden="true"></i>
                 </button>
-                <div id="picker" class="glass-menu liquid-glass liquid-glass--heavy color-picker hidden" role="dialog" aria-label="Text color"></div>
+                <div id="picker" class="glass-menu color-picker hidden" role="dialog" aria-label="Text color"></div>
               </div>
 
               <!-- Highlight -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="highlight-btn" title="Highlight color" aria-label="Highlight" aria-haspopup="dialog">
-                  <span class="material-symbols-outlined" aria-hidden="true">ink_highlighter</span>
+                  <span class="icon" aria-hidden="true">highlighter</span>
                   <i class="hl-bar" id="hl-bar" aria-hidden="true"></i>
                 </button>
-                <div id="hl-picker" class="glass-menu liquid-glass liquid-glass--heavy color-picker hidden" role="dialog" aria-label="Highlight color">
+                <div id="hl-picker" class="glass-menu color-picker hidden" role="dialog" aria-label="Highlight color">
                   <button type="button" class="menu-option" id="hl-none">No highlight</button>
                   <div id="hl-colors" class="swatch-grid"></div>
                 </div>
@@ -232,22 +221,22 @@
               <!-- Page / slide color -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="page-color-btn" title="Page color" aria-label="Page color" aria-haspopup="dialog">
-                  <span class="material-symbols-outlined" aria-hidden="true">format_paint</span>
+                  <span class="icon" aria-hidden="true">paint-brush</span>
                   <i class="page-bar" id="page-bar" aria-hidden="true"></i>
                 </button>
-                <div id="page-picker" class="glass-menu liquid-glass liquid-glass--heavy color-picker hidden" role="dialog" aria-label="Page color"></div>
+                <div id="page-picker" class="glass-menu color-picker hidden" role="dialog" aria-label="Page color"></div>
               </div>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
 
               <button type="button" class="t-icon pressable align" data-align="left" title="Align left" aria-label="Align left">
-                <span class="material-symbols-outlined" aria-hidden="true">format_align_left</span>
+                <span class="icon" aria-hidden="true">text-align-left</span>
               </button>
               <button type="button" class="t-icon pressable align" data-align="center" title="Align center" aria-label="Align center">
-                <span class="material-symbols-outlined" aria-hidden="true">format_align_center</span>
+                <span class="icon" aria-hidden="true">text-align-center</span>
               </button>
               <button type="button" class="t-icon pressable align" data-align="right" title="Align right" aria-label="Align right">
-                <span class="material-symbols-outlined" aria-hidden="true">format_align_right</span>
+                <span class="icon" aria-hidden="true">text-align-right</span>
               </button>
             </div>
           </div>
@@ -274,21 +263,21 @@
             </div>
             <div class="data-actions">
               <button type="button" class="glass-btn pressable sm-btn" id="media-to-slides" title="Use extracted slides / stay on canvas">
-                <span class="material-symbols-outlined" aria-hidden="true">slideshow</span>
+                <span class="icon" aria-hidden="true">presentation</span>
                 Edit slides
               </button>
               <button type="button" class="t-icon pressable" id="pdf-prev" title="Previous page" aria-label="Previous page">
-                <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+                <span class="icon" aria-hidden="true">caret-left</span>
               </button>
               <span id="pdf-page-label" class="muted">—</span>
               <button type="button" class="t-icon pressable" id="pdf-next" title="Next page" aria-label="Next page">
-                <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                <span class="icon" aria-hidden="true">caret-right</span>
               </button>
               <button type="button" class="t-icon pressable" id="pdf-zoom-out" title="Zoom out" aria-label="Zoom out">
-                <span class="material-symbols-outlined" aria-hidden="true">zoom_out</span>
+                <span class="icon" aria-hidden="true">magnifying-glass-minus</span>
               </button>
               <button type="button" class="t-icon pressable" id="pdf-zoom-in" title="Zoom in" aria-label="Zoom in">
-                <span class="material-symbols-outlined" aria-hidden="true">zoom_in</span>
+                <span class="icon" aria-hidden="true">magnifying-glass-plus</span>
               </button>
             </div>
           </div>
@@ -308,7 +297,7 @@
   </div>
 
   <div id="pdf-page-dialog" class="modal-scrim hidden" aria-hidden="true">
-    <div class="modal-card liquid-glass liquid-glass--heavy">
+    <div class="modal-card panel panel--floating">
       <h3>Insert PDF page</h3>
       <p class="muted">Choose a page number to insert as an image on the slide.</p>
       <label class="field-label">Page <input type="number" id="pdf-page-num" min="1" value="1"/></label>
@@ -320,7 +309,6 @@
   </div>
 
   <script src="vendor/pdf.min.js"></script>
-  <script src="liquid-glass.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

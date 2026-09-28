@@ -1,6 +1,6 @@
 # XSlide
 
-Local-first presentation app with liquid-glass UI and a **Rust** backend.
+Local-first presentation app with a CruxOS-styled UI and a **Rust** backend.
 
 ## Desktop app (native)
 

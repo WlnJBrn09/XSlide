@@ -89,7 +89,7 @@ def stage_product(name: str, stage: Path, architecture: str, scan_deps: bool, ma
     with copyright_path.open("a", encoding="utf-8") as notices:
         for title, filename in (
             ("Inter variable font", "Inter-LICENSE.txt"),
-            ("Material Symbols Outlined variable font", "material-symbols-LICENSE.txt"),
+            ("Phosphor icons", "phosphor-LICENSE.txt"),
         ):
             notices.write(f"\n\n{title}\n{'=' * len(title)}\n")
             notices.write((source / "static" / "assets" / filename).read_text(encoding="utf-8"))

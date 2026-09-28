@@ -1,0 +1,160 @@
+/* CruxOS design tokens — identical in every X app; edit all copies together.
+   Monochrome, light-first, one green (#A1ED72). App windows are opaque: glass
+   belongs to the shell (bar, Spotlight, panels), never to app chrome.
+   Contrast pairs are checked by scripts/test-design.js (WCAG 2.x). */
+
+:root {
+  color-scheme: light;
+
+  --crux-bg: #ffffff;
+  --crux-surface: #f5f5f7;
+  --crux-elevated: #e8e8ed;
+  --crux-border: #d2d2d7;
+  --crux-text: #1d1d1f;
+  --crux-text-secondary: #6e6e73;
+  --crux-text-tertiary: #8e8e93; /* disabled / meta only */
+
+  --crux-accent: #a1ed72; /* fills only — never text on light */
+  --crux-accent-hover: #95eb60;
+  --crux-accent-pressed: #86e849;
+  --crux-on-accent: #0a0a0b;
+  --crux-accent-edge: #37770f; /* 1px edge so light fills stay distinguishable */
+  --crux-accent-text: #37770f;
+  --crux-selected: #e5fad8;
+  --crux-selected-surface: #ddf3d2;
+  --crux-selected-text: #1d1d1f;
+  --crux-destructive: #d70015;
+
+  --crux-focus-edge: 1px solid #37770f;
+  --crux-focus-halo: 0 0 0 4px rgba(161, 237, 114, 0.55);
+  --crux-hairline: 1px solid var(--crux-border);
+  --crux-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --crux-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --crux-scrim: rgba(0, 0, 0, 0.28);
+  --crux-radius: 12px;
+
+  /* Motion (CruxOS §6): entries 200–300ms decelerate, exits 120–180ms accelerate. */
+  --crux-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --crux-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --crux-ease-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+  --crux-enter: 220ms;
+  --crux-exit: 150ms;
+  --crux-quick: 120ms;
+
+  --crux-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --crux-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --crux-bg: #0a0a0b;
+  --crux-surface: #161618;
+  --crux-elevated: #1f1f22;
+  --crux-border: #2c2c30;
+  --crux-text: #f5f5f7;
+  --crux-text-secondary: #a1a1a6;
+  --crux-text-tertiary: #7c7c82;
+
+  --crux-accent-edge: #a1ed72;
+  --crux-accent-text: #a1ed72;
+  --crux-selected: #2b3c22;
+  --crux-selected-surface: #35452c;
+  --crux-selected-text: #f5f5f7;
+  --crux-destructive: #ff453a;
+
+  --crux-focus-edge: 2px solid #a1ed72;
+  --crux-focus-halo: 0 0 0 5px rgba(161, 237, 114, 0.35);
+  --crux-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --crux-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --crux-scrim: rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --crux-enter: 110ms;
+    --crux-exit: 75ms;
+    --crux-quick: 60ms;
+  }
+  /* Reduce motion: every animation becomes a fade at half duration. */
+  *,
+  *::before,
+  *::after {
+    transition-property: opacity, color, background-color, border-color, box-shadow !important;
+    scroll-behavior: auto !important;
+  }
+  .pressable:active {
+    transform: none !important;
+  }
+}
+
+/* Phosphor (MIT) UI glyphs, rendered through the font's ligatures:
+   <span class="icon" aria-hidden="true">floppy-disk</span> */
+@font-face {
+  font-family: "Phosphor";
+  src: url("assets/Phosphor.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+.icon {
+  font-family: "Phosphor" !important;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  display: inline-block;
+  user-select: none;
+  font-feature-settings: "liga";
+  font-variant-ligatures: discretionary-ligatures;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus glow: 1px #37770F edge + 3px green halo (light), 2px ring + halo (dark).
+   Document editing surfaces (contenteditable) keep only their caret. */
+:focus-visible:not([contenteditable]) {
+  outline: var(--crux-focus-edge) !important;
+  outline-offset: 0 !important;
+  box-shadow: var(--crux-focus-halo) !important;
+}
+
+::selection {
+  background: var(--crux-selected);
+  color: var(--crux-selected-text);
+}
+
+/* Toggles that are on: green fill, dark glyph, 1px edge on light. */
+button[aria-pressed="true"] {
+  background: var(--crux-accent) !important;
+  color: var(--crux-on-accent) !important;
+  box-shadow: inset 0 0 0 1px var(--crux-accent-edge);
+}
+
+button[aria-pressed="true"]:hover {
+  background: var(--crux-accent-hover) !important;
+}
+
+button[aria-pressed="true"]:active {
+  background: var(--crux-accent-pressed) !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--crux-border);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

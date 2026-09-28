@@ -419,7 +419,7 @@
       currentHighlight = el.highlight;
       hlBar.style.background = el.highlight;
     }
-    // Liquid-glass selected bubbles on format / align chrome
+    // Toggle state on format / align controls
     document.querySelectorAll('.t-icon.fmt').forEach((btn) => {
       const cmd = btn.dataset.cmd;
       let on = false;
@@ -662,7 +662,7 @@
       btn.type = 'button';
       btn.className = 'doc-item' + (activeFilePath === f.path ? ' active' : '');
       const icon =
-        f.ext === 'pdf' ? 'picture_as_pdf' : ['pptx', 'json', 'cog'].includes(f.ext) ? 'slideshow' : 'image';
+        f.ext === 'pdf' ? 'file-pdf' : ['pptx', 'json', 'cog'].includes(f.ext) ? 'presentation' : 'image';
       btn.innerHTML =
         '<span class="ext-badge">' +
         escapeHtml((f.ext || '').toUpperCase()) +
@@ -1127,7 +1127,7 @@
       localStorage.setItem('xslide-theme', next);
     } catch { /* ignore */ }
     const meta = document.getElementById('meta-theme-color');
-    if (meta) meta.content = next === 'dark' ? '#000000' : '#ffffff';
+    if (meta) meta.content = next === 'dark' ? '#0a0a0b' : '#ffffff';
   }
 
   /* Events */
@@ -1365,9 +1365,16 @@
     if (e.dataTransfer?.files?.length) importFiles(Array.from(e.dataTransfer.files));
   });
 
-  if (window.XSuiteLiquidGlass?.attach) {
-    window.XSuiteLiquidGlass.attach({ scrollEl: stageWrap });
-  }
+  // Follow the system colour scheme until the user picks a theme.
+  try {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (localStorage.getItem('xslide-theme')) return;
+      const theme = e.matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      const meta = document.getElementById('meta-theme-color');
+      if (meta) meta.content = theme === 'dark' ? '#0a0a0b' : '#ffffff';
+    });
+  } catch { /* ignore */ }
 
   colBar.style.background = currentColor;
   hlBar.style.background = currentHighlight;
