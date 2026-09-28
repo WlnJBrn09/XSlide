@@ -21,6 +21,7 @@
   </script>
   <link rel="icon" type="image/png" href="assets/logo.png"/>
 
+  <link rel="stylesheet" href="assets/phosphor.css"/>
   <link rel="stylesheet" href="crux.css"/>
 
   <link rel="stylesheet" href="style.css"/>
@@ -44,18 +45,18 @@
       </div>
       <div class="sidebar-actions">
         <button type="button" class="sidebar-btn pressable" id="sidebar-new">
-          <span class="icon" aria-hidden="true">presentation</span>
+          <span class="ph ph-presentation" aria-hidden="true"></span>
           New Presentation
         </button>
         <button type="button" class="sidebar-btn pressable" id="sidebar-open">
-          <span class="icon" aria-hidden="true">folder-open</span>
+          <span class="ph ph-folder-open" aria-hidden="true"></span>
           Open Presentation
         </button>
       </div>
       <div class="tabs-head">
         <span id="docs-folder-label">Library</span>
         <button type="button" class="icon-btn pressable sm" id="refresh-files" title="Refresh file list" aria-label="Refresh">
-          <span class="icon" aria-hidden="true">arrows-clockwise</span>
+          <span class="ph ph-arrows-clockwise" aria-hidden="true"></span>
         </button>
       </div>
       <div class="file-hint">pdf · png · pptx</div>
@@ -73,7 +74,7 @@
               <div class="title-row">
                 <div class="doc-title" id="doc-title" contenteditable="true" spellcheck="false" role="textbox" aria-label="Presentation title">Untitled presentation</div>
                 <button type="button" class="icon-btn pressable" id="star-btn" title="Star" aria-label="Star" aria-pressed="false">
-                  <span class="icon icon-star" aria-hidden="true">star</span>
+                  <span class="ph ph-star icon-star" aria-hidden="true"></span>
                 </button>
                 <span class="status-pill" id="status-text" aria-live="polite">Saved locally</span>
               </div>
@@ -81,15 +82,15 @@
           </div>
           <div class="header-actions">
             <button type="button" class="glass-btn pressable" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
-              <span class="icon icon-light" aria-hidden="true">moon</span>
-              <span class="icon icon-dark" aria-hidden="true">sun</span>
+              <span class="ph ph-moon icon-light" aria-hidden="true"></span>
+              <span class="ph ph-sun icon-dark" aria-hidden="true"></span>
             </button>
             <button type="button" class="glass-btn pressable" id="present-btn" title="Present (F5)" aria-label="Present">
-              <span class="icon" aria-hidden="true">play</span>
+              <span class="ph ph-play" aria-hidden="true"></span>
               Present
             </button>
             <button type="button" class="glass-btn pressable" id="save-btn" title="Save (Ctrl+S)" aria-label="Save">
-              <span class="icon" aria-hidden="true">floppy-disk</span>
+              <span class="ph ph-floppy-disk" aria-hidden="true"></span>
               Save
             </button>
             <label class="sr-only" for="export-format">Export format</label>
@@ -108,38 +109,38 @@
               <!-- Insert (+) -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="insert-btn" title="Insert" aria-label="Insert" aria-haspopup="menu" aria-expanded="false">
-                  <span class="icon" aria-hidden="true">plus-square</span>
+                  <span class="ph ph-plus-square" aria-hidden="true"></span>
                 </button>
                 <div id="insert-menu" class="glass-menu hidden" role="menu" aria-label="Insert">
                   <button type="button" class="menu-option" data-insert="image" role="menuitem">
-                    <span class="icon" aria-hidden="true">image</span> Image / PDF page
+                    <span class="ph ph-image" aria-hidden="true"></span> Image / PDF page
                   </button>
                   <button type="button" class="menu-option" data-insert="video" role="menuitem">
-                    <span class="icon" aria-hidden="true">film-strip</span> Video
+                    <span class="ph ph-film-strip" aria-hidden="true"></span> Video
                   </button>
                   <button type="button" class="menu-option" data-insert="audio" role="menuitem">
-                    <span class="icon" aria-hidden="true">file-audio</span> Audio
+                    <span class="ph ph-file-audio" aria-hidden="true"></span> Audio
                   </button>
                   <button type="button" class="menu-option" data-insert="text" role="menuitem">
-                    <span class="icon" aria-hidden="true">text-t</span> Text box
+                    <span class="ph ph-text-t" aria-hidden="true"></span> Text box
                   </button>
                 </div>
               </div>
 
               <button type="button" class="t-icon pressable" id="add-slide-btn" title="Add slide" aria-label="Add slide">
-                <span class="icon" aria-hidden="true">file-plus</span>
+                <span class="ph ph-file-plus" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable" id="del-slide-btn" title="Delete slide" aria-label="Delete slide">
-                <span class="icon" aria-hidden="true">trash</span>
+                <span class="ph ph-trash" aria-hidden="true"></span>
               </button>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
 
               <button type="button" class="t-icon pressable" id="undo-btn" title="Undo (Ctrl+Z)" aria-label="Undo">
-                <span class="icon" aria-hidden="true">arrow-counter-clockwise</span>
+                <span class="ph ph-arrow-counter-clockwise" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable" id="redo-btn" title="Redo (Ctrl+Y)" aria-label="Redo">
-                <span class="icon" aria-hidden="true">arrow-clockwise</span>
+                <span class="ph ph-arrow-clockwise" aria-hidden="true"></span>
               </button>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
@@ -148,7 +149,7 @@
               <div class="tb-wrap">
                 <button type="button" class="t-label pressable font-drop" id="font-btn" title="Font" aria-haspopup="listbox" aria-expanded="false">
                   <span id="font-label">Inter</span>
-                  <span class="icon sm" aria-hidden="true">caret-down</span>
+                  <span class="ph ph-caret-down sm" aria-hidden="true"></span>
                 </button>
                 <div id="font-menu" class="glass-menu hidden" role="listbox" aria-label="Font family">
                   <button type="button" class="menu-option font-option" data-font="Inter" style="font-family:Inter,sans-serif">Inter</button>
@@ -166,33 +167,33 @@
 
               <div class="font-size-box inset-field" role="group" aria-label="Font size">
                 <button type="button" class="t-icon mini pressable" id="fs-minus" title="Decrease font size" aria-label="Decrease font size">
-                  <span class="icon" aria-hidden="true">minus</span>
+                  <span class="ph ph-minus" aria-hidden="true"></span>
                 </button>
                 <input type="text" class="fs-val" id="fs-val" value="18" inputmode="numeric" aria-label="Font size"/>
                 <button type="button" class="t-icon mini pressable" id="fs-plus" title="Increase font size" aria-label="Increase font size">
-                  <span class="icon" aria-hidden="true">plus</span>
+                  <span class="ph ph-plus" aria-hidden="true"></span>
                 </button>
               </div>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
 
               <button type="button" class="t-icon pressable fmt" data-cmd="bold" title="Bold" aria-label="Bold">
-                <span class="icon" aria-hidden="true">text-b</span>
+                <span class="ph ph-text-b" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="italic" title="Italic" aria-label="Italic">
-                <span class="icon" aria-hidden="true">text-italic</span>
+                <span class="ph ph-text-italic" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="underline" title="Underline" aria-label="Underline">
-                <span class="icon" aria-hidden="true">text-underline</span>
+                <span class="ph ph-text-underline" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="strikethrough" title="Strikethrough" aria-label="Strikethrough">
-                <span class="icon" aria-hidden="true">text-strikethrough</span>
+                <span class="ph ph-text-strikethrough" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="superscript" title="Superscript" aria-label="Superscript">
-                <span class="icon" aria-hidden="true">text-superscript</span>
+                <span class="ph ph-text-superscript" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable fmt" data-cmd="subscript" title="Subscript" aria-label="Subscript">
-                <span class="icon" aria-hidden="true">text-subscript</span>
+                <span class="ph ph-text-subscript" aria-hidden="true"></span>
               </button>
 
               <div class="v-sep" role="separator" aria-hidden="true"></div>
@@ -200,7 +201,7 @@
               <!-- Text color -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="color-btn" title="Text color" aria-label="Text color" aria-haspopup="dialog">
-                  <span class="icon" aria-hidden="true">text-a-underline</span>
+                  <span class="ph ph-text-a-underline" aria-hidden="true"></span>
                   <i class="col-bar" id="col-bar" aria-hidden="true"></i>
                 </button>
                 <div id="picker" class="glass-menu color-picker hidden" role="dialog" aria-label="Text color"></div>
@@ -209,7 +210,7 @@
               <!-- Highlight -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="highlight-btn" title="Highlight color" aria-label="Highlight" aria-haspopup="dialog">
-                  <span class="icon" aria-hidden="true">highlighter</span>
+                  <span class="ph ph-highlighter" aria-hidden="true"></span>
                   <i class="hl-bar" id="hl-bar" aria-hidden="true"></i>
                 </button>
                 <div id="hl-picker" class="glass-menu color-picker hidden" role="dialog" aria-label="Highlight color">
@@ -221,7 +222,7 @@
               <!-- Page / slide color -->
               <div class="tb-wrap">
                 <button type="button" class="t-icon pressable" id="page-color-btn" title="Page color" aria-label="Page color" aria-haspopup="dialog">
-                  <span class="icon" aria-hidden="true">paint-brush</span>
+                  <span class="ph ph-paint-brush" aria-hidden="true"></span>
                   <i class="page-bar" id="page-bar" aria-hidden="true"></i>
                 </button>
                 <div id="page-picker" class="glass-menu color-picker hidden" role="dialog" aria-label="Page color"></div>
@@ -230,13 +231,13 @@
               <div class="v-sep" role="separator" aria-hidden="true"></div>
 
               <button type="button" class="t-icon pressable align" data-align="left" title="Align left" aria-label="Align left">
-                <span class="icon" aria-hidden="true">text-align-left</span>
+                <span class="ph ph-text-align-left" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable align" data-align="center" title="Align center" aria-label="Align center">
-                <span class="icon" aria-hidden="true">text-align-center</span>
+                <span class="ph ph-text-align-center" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable align" data-align="right" title="Align right" aria-label="Align right">
-                <span class="icon" aria-hidden="true">text-align-right</span>
+                <span class="ph ph-text-align-right" aria-hidden="true"></span>
               </button>
             </div>
           </div>
@@ -263,21 +264,21 @@
             </div>
             <div class="data-actions">
               <button type="button" class="glass-btn pressable sm-btn" id="media-to-slides" title="Use extracted slides / stay on canvas">
-                <span class="icon" aria-hidden="true">presentation</span>
+                <span class="ph ph-presentation" aria-hidden="true"></span>
                 Edit slides
               </button>
               <button type="button" class="t-icon pressable" id="pdf-prev" title="Previous page" aria-label="Previous page">
-                <span class="icon" aria-hidden="true">caret-left</span>
+                <span class="ph ph-caret-left" aria-hidden="true"></span>
               </button>
               <span id="pdf-page-label" class="muted">—</span>
               <button type="button" class="t-icon pressable" id="pdf-next" title="Next page" aria-label="Next page">
-                <span class="icon" aria-hidden="true">caret-right</span>
+                <span class="ph ph-caret-right" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable" id="pdf-zoom-out" title="Zoom out" aria-label="Zoom out">
-                <span class="icon" aria-hidden="true">magnifying-glass-minus</span>
+                <span class="ph ph-magnifying-glass-minus" aria-hidden="true"></span>
               </button>
               <button type="button" class="t-icon pressable" id="pdf-zoom-in" title="Zoom in" aria-label="Zoom in">
-                <span class="icon" aria-hidden="true">magnifying-glass-plus</span>
+                <span class="ph ph-magnifying-glass-plus" aria-hidden="true"></span>
               </button>
             </div>
           </div>

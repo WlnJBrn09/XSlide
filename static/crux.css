@@ -88,31 +88,12 @@ html[data-theme="dark"] {
   }
 }
 
-/* Phosphor (MIT) UI glyphs, rendered through the font's ligatures:
-   <span class="icon" aria-hidden="true">floppy-disk</span> */
-@font-face {
-  font-family: "Phosphor";
-  src: url("assets/Phosphor.woff2") format("woff2");
-  font-weight: normal;
-  font-style: normal;
-  font-display: block;
-}
-
-.icon {
-  font-family: "Phosphor" !important;
-  font-style: normal;
-  font-weight: normal;
-  font-size: 18px;
-  line-height: 1;
-  letter-spacing: 0;
-  text-transform: none;
-  white-space: nowrap;
-  direction: ltr;
+/* Phosphor (MIT) UI glyphs, drawn by codepoint classes from assets/phosphor.css:
+   <span class="ph ph-floppy-disk" aria-hidden="true"></span> */
+.ph {
   display: inline-block;
+  font-size: 18px;
   user-select: none;
-  font-feature-settings: "liga";
-  font-variant-ligatures: discretionary-ligatures;
-  -webkit-font-smoothing: antialiased;
 }
 
 /* Focus glow: 1px #37770F edge + 3px green halo (light), 2px ring + halo (dark).

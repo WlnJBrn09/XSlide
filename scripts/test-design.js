@@ -96,6 +96,12 @@ check(!/backdrop-filter\s*:\s*(?!none)/.test(css), 'no backdrop blur: app window
 check(!/liquid-glass|lg-refract|--specular-/.test(css + markup), 'no liquid-glass material or specular driver');
 check(!/Material Symbols|material-symbols/.test(css + markup), 'no Material Symbols (UI glyphs are Phosphor)');
 check(fs.existsSync(path.join(staticDir, 'assets', 'Phosphor.woff2')), 'Phosphor font is bundled');
+// Ligature text (<span class="icon">name</span>) renders unreliably in WebKitGTK; use codepoint classes.
+check(!/class="icon[" ]/.test(markup), 'icons use Phosphor codepoint classes, not ligature text');
+const phosphor = read(path.join('assets', 'phosphor.css'));
+const iconNames = [...markup.matchAll(/\bph ph-([a-z0-9-]+)/g)].map((m) => m[1]);
+const unknown = iconNames.filter((name) => !phosphor.includes(`.ph.ph-${name}:before`));
+check(iconNames.length > 0 && unknown.length === 0, `every icon exists in Phosphor${unknown.length ? ': ' + unknown.join(', ') : ''}`);
 check(!/animation[^;{}]*infinite/.test(css), 'no looping animations');
 check(/prefers-reduced-motion/.test(crux), 'reduce motion falls back to fades');
 check(/:focus-visible/.test(crux), 'focus glow defined');

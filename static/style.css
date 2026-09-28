@@ -206,7 +206,7 @@ html[data-theme="dark"] .sidebar-btn {
   box-shadow: none;
 }
 
-.sidebar-btn .icon {
+.sidebar-btn .ph {
   font-size: 20px;
 }
 
@@ -412,7 +412,7 @@ html[data-theme="dark"] .doc-item.active {
   height: 28px;
 }
 
-.icon-btn.sm .icon {
+.icon-btn.sm .ph {
   font-size: 18px;
 }
 
@@ -953,7 +953,7 @@ html[data-theme="dark"] .slide-el:hover {
 .t-label .sm { font-size: 18px; }
 .font-drop #font-label { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-icon.mini { width: 26px; height: 26px; }
-.t-icon.mini .icon { font-size: 16px; }
+.t-icon.mini .ph { font-size: 16px; }
 .font-size-box {
   display: inline-flex; align-items: center; gap: 0;
   border-radius: 12px; border: 1px solid var(--border);
@@ -1002,7 +1002,7 @@ html[data-theme="dark"] .slide-el:hover {
   background: var(--crux-selected);
   color: var(--crux-selected-text);
 }
-.menu-option .icon { font-size: 18px; color: var(--text-secondary); }
+.menu-option .ph { font-size: 18px; color: var(--text-secondary); }
 .color-picker { min-width: 220px; padding: 10px; }
 .swatch-grid {
   display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; padding: 4px 0;
