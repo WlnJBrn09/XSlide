@@ -211,7 +211,8 @@ async fn import_upload(
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Json<files::OpenedFile>, ApiError> {
-    while let Some(field) = multipart
+    // Only the first uploaded file is opened.
+    if let Some(field) = multipart
         .next_field()
         .await
         .map_err(|e| ApiError::bad(e.to_string()))?
@@ -306,10 +307,7 @@ async fn export_document(Json(body): Json<export::ExportBody>) -> Result<Respons
             .parse()
             .unwrap_or_else(|_| "application/octet-stream".parse().unwrap()),
     );
-    let disp = format!(
-        "attachment; filename=\"{}\"",
-        file.filename.replace('"', "")
-    );
+    let disp = content_disposition(&file.filename);
     res.headers_mut().insert(
         header::CONTENT_DISPOSITION,
         disp.parse()
@@ -461,4 +459,27 @@ mod import_tests {
         assert_eq!(std::fs::read(dir.join(second)).unwrap(), b"second");
         std::fs::remove_dir_all(dir).unwrap();
     }
+}
+
+/// `attachment` header with an ASCII fallback name plus the exact UTF-8 name (RFC 6266).
+fn content_disposition(filename: &str) -> String {
+    let fallback: String = filename
+        .chars()
+        .map(|c| {
+            if c.is_ascii() && !c.is_ascii_control() && c != '"' && c != '\\' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let mut encoded = String::new();
+    for byte in filename.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    format!("attachment; filename=\"{fallback}\"; filename*=UTF-8''{encoded}")
 }
