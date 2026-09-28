@@ -1,11 +1,5 @@
 //! XSlide native desktop host.
 //! Spawns the local Rust backend and loads the UI in a system WebView.
-//!
-//! GUI builds use the Windows subsystem so double-click / Start Menu launch
-//! does **not** open a console window.
-
-// Hide the console for normal desktop use. Headless mode re-attaches a console.
-#![cfg_attr(all(windows, not(test)), windows_subsystem = "windows")]
 
 mod lifecycle;
 
@@ -25,7 +19,7 @@ use wry::WebViewBuilder;
 use lifecycle::{
     build_backend_env, default_user_data_base, effective_port, health_url, resolve_app_root,
     resolve_backend_binary, resolve_data_dir, resolve_static_dir, ui_url, wait_for_health,
-    APP_USER_MODEL_ID, PRODUCT_NAME, WINDOW_TITLE,
+    PRODUCT_NAME, WINDOW_TITLE,
 };
 
 struct BackendGuard {
@@ -35,9 +29,6 @@ struct BackendGuard {
 impl BackendGuard {
     fn stop(&mut self) {
         if let Some(mut child) = self.child.take() {
-            #[cfg(windows)]
-            kill_process_tree(child.id());
-            #[cfg(not(windows))]
             let _ = child.kill();
             let _ = child.wait();
         }
@@ -48,15 +39,6 @@ impl Drop for BackendGuard {
     fn drop(&mut self) {
         self.stop();
     }
-}
-
-#[cfg(windows)]
-fn kill_process_tree(pid: u32) {
-    let _ = Command::new("taskkill")
-        .args(["/pid", &pid.to_string(), "/f", "/t"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
 }
 
 fn exe_dir() -> Result<PathBuf> {
@@ -72,14 +54,9 @@ fn load_window_icon(app_root: &Path) -> Option<Icon> {
     let candidates = [
         app_root.join("build").join("icon.png"),
         app_root.join("static").join("assets").join("logo.png"),
-        app_root.join("build").join("icon.ico"),
     ];
     for path in &candidates {
         if !path.is_file() {
-            continue;
-        }
-        // Prefer PNG via image crate (ico path may fail without ico feature).
-        if path.extension().and_then(|e| e.to_str()) == Some("ico") {
             continue;
         }
         if let Some(icon) = png_to_icon(path) {
@@ -145,14 +122,6 @@ fn start_backend(
         cmd.env("RUST_LOG", v);
     }
 
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // CREATE_NO_WINDOW: never flash a console for the console-subsystem backend.
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
-
     let child = cmd
         .spawn()
         .with_context(|| format!("spawn backend {}", backend.display()))?;
@@ -173,23 +142,6 @@ fn headless_mode() -> bool {
         )
 }
 
-/// Attach a console for headless/CI so readiness lines can be read.
-#[cfg(windows)]
-fn attach_console_for_headless() {
-    unsafe {
-        #[link(name = "kernel32")]
-        extern "system" {
-            fn AllocConsole() -> i32;
-            fn AttachConsole(dw_process_id: u32) -> i32;
-        }
-        const ATTACH_PARENT_PROCESS: u32 = 0xFFFF_FFFF;
-        if AttachConsole(ATTACH_PARENT_PROCESS) == 0 {
-            let _ = AllocConsole();
-        }
-    }
-}
-
-#[cfg(not(windows))]
 fn attach_console_for_headless() {}
 
 fn run_headless(port: u16, mut backend: BackendGuard) -> Result<()> {
@@ -247,40 +199,19 @@ fn run_gui(
     });
 }
 
-#[cfg(windows)]
+/// Best-effort GUI error dialog via zenity; falls back to stderr.
 fn show_error_dialog(title: &str, message: &str) {
-    use std::os::windows::ffi::OsStrExt;
-    fn wide(s: &str) -> Vec<u16> {
-        std::ffi::OsStr::new(s)
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect()
-    }
-    unsafe {
-        #[link(name = "user32")]
-        extern "system" {
-            fn MessageBoxW(
-                hwnd: *mut core::ffi::c_void,
-                text: *const u16,
-                caption: *const u16,
-                utype: u32,
-            ) -> i32;
-        }
-        const MB_OK: u32 = 0x0000_0000;
-        const MB_ICONERROR: u32 = 0x0000_0010;
-        let t = wide(title);
-        let m = wide(message);
-        MessageBoxW(
-            std::ptr::null_mut(),
-            m.as_ptr(),
-            t.as_ptr(),
-            MB_OK | MB_ICONERROR,
-        );
+    let shown = Command::new("zenity")
+        .args(["--error", "--title", title, "--text", message])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false);
+    if !shown {
+        eprintln!("{title}: {message}");
     }
 }
-
-#[cfg(not(windows))]
-fn show_error_dialog(_title: &str, _message: &str) {}
 
 fn main() {
     if let Err(e) = run() {
@@ -296,7 +227,7 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    let _ = (PRODUCT_NAME, APP_USER_MODEL_ID, health_url(0));
+    let _ = (PRODUCT_NAME, health_url(0));
     let launch_file = launch_arg()?;
     let launch_token = launch_file.as_ref().map(|_| random_token());
     let port = native_port()?;

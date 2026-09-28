@@ -9,51 +9,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - name: Install icon tool
-        run: npm install --no-save png-to-ico
-      - name: Build + package Windows
-        shell: pwsh
-        run: ./scripts/package-native-win.ps1
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: XSlide-windows
-          path: dist/*_win.zip
-
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build backend + native host (macOS)
-        run: |
-          cargo build --release
-          cargo build --release --manifest-path native-host/Cargo.toml
-      - name: Stage portable layout
-        run: |
-          VER=$(node -p "require('./package.json').version")
-          OUT="dist/XSlide_v${VER}_mac_$(uname -m)"
-          mkdir -p "$OUT/backend" "$OUT/build"
-          cp native-host/target/release/xslide-native "$OUT/XSlide"
-          cp target/release/xslide "$OUT/backend/xslide"
-          chmod +x "$OUT/XSlide" "$OUT/backend/xslide"
-          cp -R static "$OUT/static"
-          if [ -f build/icon.png ]; then cp build/icon.png "$OUT/build/icon.png"; fi
-          (cd dist && zip -r "XSlide_v${VER}_mac_$(uname -m).zip" "XSlide_v${VER}_mac_$(uname -m)")
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: XSlide-macos
-          path: dist/*_mac_*.zip
-
   linux:
     runs-on: ubuntu-latest
     steps:

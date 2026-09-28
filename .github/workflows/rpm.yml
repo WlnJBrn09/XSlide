@@ -1,0 +1,58 @@
+name: RPM package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Install RPM build dependencies
+        run: |
+          dnf install -y ca-certificates git rust cargo nodejs npm webkit2gtk4.1-devel gtk3-devel rpm-build desktop-file-utils
+      - uses: actions/checkout@v4
+      - name: Test backend, native host, and editor model
+        run: |
+          cargo test --locked
+          cargo test --locked --manifest-path native-host/Cargo.toml
+          npm test --if-present
+      - name: Build release binaries
+        run: |
+          cargo build --release --locked
+          cargo build --release --locked --manifest-path native-host/Cargo.toml
+      - name: Build RPM package
+        run: python3 scripts/package-rpm.py XSlide
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xslide-rpm
+          path: dist/rpm/*.rpm
+
+  install-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Install test tools
+        run: |
+          dnf install -y desktop-file-utils
+      - uses: actions/download-artifact@v4
+        with:
+          name: xslide-rpm
+          path: packages
+      - name: Install package with dependencies
+        run: dnf install -y ./packages/*.rpm
+      - name: Check desktop entry and native launch
+        shell: bash
+        run: |
+          set -euo pipefail
+          desktop-file-validate /usr/share/applications/xslide.desktop
+          printf 'RPM launch check\n' > /tmp/xsuite-launch.txt
+          FILE=/tmp/xsuite-launch.txt
+          XDG_DATA_HOME=/tmp/xsuite-smoke XWRITE_NATIVE_HEADLESS_SECS=1 /usr/bin/xslide --headless "$FILE" > /tmp/xslide-smoke.log
+          grep -q 'native-host ready product=xslide' /tmp/xslide-smoke.log
+          test -f /usr/share/icons/hicolor/256x256/apps/xslide.png

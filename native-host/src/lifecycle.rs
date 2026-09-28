@@ -13,14 +13,9 @@ pub const BACKEND_STEM: &str = "xslide";
 pub const DEFAULT_PORT: u16 = 8789;
 pub const DATA_DIR_NAME: &str = "xslide-data";
 pub const WINDOW_TITLE: &str = "XSlide";
-pub const APP_USER_MODEL_ID: &str = "com.xslide.app";
 
 pub fn backend_exe_name() -> String {
-    if cfg!(windows) {
-        format!("{BACKEND_STEM}.exe")
-    } else {
-        BACKEND_STEM.to_string()
-    }
+    BACKEND_STEM.to_string()
 }
 
 /// Resolve the backend binary given the application root (directory that owns
@@ -188,12 +183,8 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn backend_exe_name_is_windows_exe() {
-        let name = backend_exe_name();
-        assert!(name.starts_with(BACKEND_STEM));
-        if cfg!(windows) {
-            assert!(name.ends_with(".exe"));
-        }
+    fn backend_exe_name_matches_stem() {
+        assert_eq!(backend_exe_name(), BACKEND_STEM);
     }
 
     #[test]
